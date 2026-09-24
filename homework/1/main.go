@@ -32,39 +32,54 @@ func checkItemInContainer(containers []*Container, item string) *Item {
 }
 
 func deleteItemInContainer(containers []*Container, item *Item) bool {
-		for _, container := range containers {
+		for index, container := range containers {
 			for index, itemInContainer := range container.InternalItems {
 				if itemInContainer == item {
 					container.InternalItems = append(container.InternalItems[:index], container.InternalItems[index+1:]...)
 					return true
 				}
 			} 
+			if len(container.InternalItems) == 0 {
+				containers = append(containers[:index], containers[index+1:]...)
+			}
 		}
 	return false
 }
 
-// func createStringPrintToMove(room *Room) string {
-// 	var stringPrint string
-// 	stringPrint += room.Description
+func deleteContainerInRoom(room *Room) bool {
+	for index, container := range room.Containers {
+		if len(container.InternalItems) == 0 {
+				room.Containers = append(room.Containers[:index], room.Containers[index+1:]...)
+				return true
+			}
+	}
+	return false
+}
 
-// 	var stringNextRoom string
-// 	if len(room.Containers) != 0 {
-// 		for _, container := range room.Containers {
-// 		stringContainer += container.Name
-// 			for _, item := range container.InternalItems {
-// 				stringContainer += " " + item.Name + ","
-// 			}
-// 		}
-// 	}
+func createStringPrintToLookAround(room *Room) string {
+	var sliceStringContainer []string
+	var stringContainer string
+	if len(room.Containers) != 0 {
+		for _, container := range room.Containers {
+			var sliceItemName []string
+			
+			for _, item := range container.InternalItems {
+				sliceItemName = append(sliceItemName, item.Name)
+			}
+			sliceStringContainer = append(sliceStringContainer, container.Name + strings.Join(sliceItemName, ", "))
+		}
+		stringContainer = strings.Join(sliceStringContainer, ", ")
+		return stringContainer
+	} else {
+		return fmt.Sprintf("пустая %s", room.Name)
+	}
+}
 
+func updateStringToLook(room *Room)  {
+	room.StringPrintToLookAround = room.UniqueTextInStart + createStringPrintToLookAround(room) + room.UniqueTextInEnd + room.TextExitRooms
 
+}
 
-// 	stringPrint += stringContainer
-
-	
-
-// 	return stringPrint
-// }
 //------------------------------------------//
 
 
@@ -76,13 +91,16 @@ func main() {
 		очень круто будет сделать построчный ввод команд тут, хотя это и не требуется по заданию
 	*/
 	initGame()
-	fmt.Println(handleCommand("идти комната"))
-	fmt.Println(handleCommand("идти коридор"))
-	fmt.Println(handleCommand("применить ключи дверь"))
-	fmt.Println(handleCommand("идти комната"))
-	fmt.Println(handleCommand("взять ключи"))
-	fmt.Println(handleCommand("надеть рюкзак"))
-	fmt.Println(handleCommand("взять ключи"))
+	fmt.Println(handleCommand("осмотреться"))            // 1  осмотр на кухне
+fmt.Println(handleCommand("идти коридор"))           // 2  переход в коридор
+fmt.Println(handleCommand("идти комната"))           // 3  переход в комнату
+fmt.Println(handleCommand("осмотреться"))            // 4  осмотр комнаты
+fmt.Println(handleCommand("надеть рюкзак"))          // 5  надеть рюкзак
+fmt.Println(handleCommand("взять ключи"))            // 6  взять ключи
+fmt.Println(handleCommand("взять конспекты"))        // 7  взять конспекты
+fmt.Println(handleCommand("идти коридор"))           // 8  обратно в коридор
+fmt.Println(handleCommand("применить ключи дверь"))  // 9  открыть дверь
+fmt.Println(handleCommand("идти улица"))             // 10 выйти на улицу
 }
 
 func initGame() {
@@ -114,6 +132,8 @@ func initGame() {
 		IsWearing: true,
 		OnWearing: func(p *Player) {
 			p.IsInventoryAccess = true
+			RoomsGame["кухня"].StringPrintToLookAround = strings.ReplaceAll(RoomsGame["кухня"].StringPrintToLookAround, "собрать рюкзак и ", "")
+			RoomsGame["кухня"].UniqueTextInEnd = strings.ReplaceAll(RoomsGame["кухня"].UniqueTextInEnd, "собрать рюкзак и ", "")
 		},
 	}
 
@@ -131,14 +151,14 @@ func initGame() {
 	//--------- CREATE CONTAINER-----------//
 
 	kitchen_table := &Container{
-		Name: "На столе:",
+		Name: "на столе: ",
 		InternalItems: []*Item{
 			tea,
 		},
 	}
 
 	player_room_table := &Container{
-		Name: "На столе:",
+		Name: "на столе: ",
 		InternalItems: []*Item{
 			key,
 			notes,
@@ -146,7 +166,7 @@ func initGame() {
 	}
 
 	player_room_chair := &Container{
-		Name: "На стуле:",
+		Name: "на стуле: ",
 		InternalItems: []*Item{
 			backpack,
 		},
@@ -159,7 +179,7 @@ func initGame() {
 	targetDorInCoridor := &Target{
 		Name: "дверь",
 		ItemsApply: map[string]*Item{
-			"ключ": key,
+			"ключи": key,
 		},
 		ApplyResult: map[*Item]string{
 			key: "открыта",
@@ -177,7 +197,8 @@ func initGame() {
 
 	coridor := &Room{
 		Name: "коридор",
-		Description: "ничего интересного.",
+		Description: "ничего интересного",
+		TextExitRooms: ". можно пройти - кухня, комната, улица",
 		Targets: map[string]*Target{
 			"дверь": targetDorInCoridor,
 			"шкаф": targetWardrobeInCoridor,
@@ -186,7 +207,10 @@ func initGame() {
 
 	kitchen := &Room{
 		Name: "кухня",
-		Description: "кухня, ничего интересного.",
+		UniqueTextInStart: "ты находишься на кухне, ",
+		UniqueTextInEnd: ", надо собрать рюкзак и идти в универ",
+		Description: "кухня, ничего интересного",
+		TextExitRooms: ". можно пройти - коридор",
 		IsLocked: false,
 		Containers: []*Container{
 			kitchen_table,
@@ -195,18 +219,21 @@ func initGame() {
 
 	playerRoom := &Room{
 		Name: "комната",
-		Description: "ты в своей комнате.",
+		Description: "ты в своей комнате",
+		TextExitRooms: ". можно пройти - коридор",
 		IsLocked: false,
 		Containers: []*Container{
-			player_room_chair,
 			player_room_table,
+			player_room_chair,
 		},
 	}
 
 	street := &Room{
 		Name: "улица",
-		Description: "на улице весна.",
+		Description: "на улице весна",
+		TextExitRooms: ". можно пройти - домой",
 		IsLocked: true,
+		LockedString: "дверь закрыта",
 	}
 
 	kitchen.ExitRooms = map[string]*Room{
@@ -223,11 +250,15 @@ func initGame() {
 	street.ExitRooms = map[string]*Room{
 		"домой": coridor,
 	}
-	kitchen.StringPrintToMove = kitchen.Description + " можно пройти - коридор"
-	coridor.StringPrintToMove = coridor.Description + " можно пройти - кухня, комната, улица"
-	playerRoom.StringPrintToMove = playerRoom.Description + " можно пройти - коридор"
-	street.StringPrintToMove = street.Description + " можно пройти - домой"
+	kitchen.StringPrintToMove = kitchen.Description + kitchen.TextExitRooms
+	coridor.StringPrintToMove = coridor.Description + coridor.TextExitRooms
+	playerRoom.StringPrintToMove = playerRoom.Description + playerRoom.TextExitRooms
+	street.StringPrintToMove = street.Description + street.TextExitRooms
 
+	kitchen.StringPrintToLookAround = kitchen.UniqueTextInStart + createStringPrintToLookAround(kitchen) + kitchen.UniqueTextInEnd + kitchen.TextExitRooms
+	coridor.StringPrintToLookAround = coridor.UniqueTextInStart + createStringPrintToLookAround(coridor) + coridor.UniqueTextInEnd + coridor.TextExitRooms
+	playerRoom.StringPrintToLookAround = playerRoom.UniqueTextInStart + createStringPrintToLookAround(playerRoom) + playerRoom.UniqueTextInEnd + playerRoom.TextExitRooms
+	street.StringPrintToLookAround = street.UniqueTextInStart + createStringPrintToLookAround(street) + street.UniqueTextInEnd + street.TextExitRooms
 
 
 	RoomsGame = map[string]*Room{
@@ -254,7 +285,8 @@ func initGame() {
 	//--------- CREATE COMMANDS-----------//
 
 	putOn := func(player *Player, item string) string {
-		
+		item = strings.ReplaceAll(item, " ", "")
+
 		itemObject := checkItemInContainer(player.CurrentLocathion.Containers, item)
 
 		if itemObject == nil {
@@ -263,6 +295,15 @@ func initGame() {
 		
 		if itemObject.IsWearing {
 			itemObject.OnWearing(player)
+
+			isDeleted := deleteItemInContainer(player.CurrentLocathion.Containers, itemObject)
+		
+			if isDeleted {
+				deleteContainerInRoom(player.CurrentLocathion)
+			}
+			updateStringToLook(player.CurrentLocathion)
+			
+
 			return fmt.Sprintf("вы надели: %s", itemObject.Name)
 		} else {
 			return "предмет не надевается"
@@ -270,6 +311,7 @@ func initGame() {
 	}
 
 	toTake := func(player *Player, item string) string {
+		item = strings.ReplaceAll(item, " ", "")
 
 		if !player.IsInventoryAccess {
 			return "некуда класть"
@@ -284,9 +326,12 @@ func initGame() {
 		player.Inventory[itemObject.Name] = itemObject
 		isDeleted := deleteItemInContainer(player.CurrentLocathion.Containers, itemObject)
 		
-		if !isDeleted {
-			panic("Что-то пошло не так")
+
+		if isDeleted {
+			deleteContainerInRoom(player.CurrentLocathion)
 		}
+
+		updateStringToLook(player.CurrentLocathion)
 
 		return fmt.Sprintf("предмет добавлен в инвентарь: %s", itemObject.Name)
 	}	
@@ -298,16 +343,16 @@ func initGame() {
 		var target *Target
 		var item *Item
 		
-		if target, ok := player.CurrentLocathion.Targets[targetToApply]; !ok {
+		if targetSearch, ok := player.CurrentLocathion.Targets[targetToApply]; !ok {
 			return "такого нет"
 		} else {
-			target = target
+			target = targetSearch
 		}
 
-		if item, ok := player.Inventory[itemUse]; !ok {
+		if itemSearch, ok := player.Inventory[itemUse]; !ok {
 			return fmt.Sprintf("нет предмета в инвентаре - %s", itemUse)
 		} else {
-			item = item
+			item = itemSearch
 		}
 
 		if _, ok := target.ItemsApply[item.Name]; !ok {
@@ -323,9 +368,16 @@ func initGame() {
 		if nextRoom, ok := player.CurrentLocathion.ExitRooms[roomGo]; !ok {
 			return fmt.Sprintf("нет пути в %s", roomGo)
 		} else {
+			if nextRoom.IsLocked {
+				return nextRoom.LockedString
+			}
 			player.CurrentLocathion = nextRoom
 			return fmt.Sprintf("%s", nextRoom.StringPrintToMove)
 		}
+	}
+
+	toLookAround := func(player *Player, roomGo string) string {
+		return player.CurrentLocathion.StringPrintToLookAround
 	}
 
 	CommandsGame = map[string]func(player *Player, args string) string{
@@ -333,6 +385,7 @@ func initGame() {
 		"взять": toTake,
 		"надеть": putOn,
 		"применить": apply,
+		"осмотреться": toLookAround,
 
 	}
 	//-------------------------------//
@@ -340,9 +393,13 @@ func initGame() {
 }
 
 func handleCommand(command string) string {
-	
+	var funcActhion func(player *Player, roomGo string) string
 	commandSlice := strings.Fields(command)
-	funcActhion := CommandsGame[commandSlice[0]]
+	if funcCmd, ok := CommandsGame[commandSlice[0]]; !ok {
+		return "неизвестная команда"
+	} else {
+		funcActhion = funcCmd
+	}
 	stringArgs := ""
 	for i := 1; i < len(commandSlice); i++ {
 		stringArgs += commandSlice[i] + " "
