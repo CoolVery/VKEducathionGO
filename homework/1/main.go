@@ -1,10 +1,75 @@
 package main
 
 import (
-	. "firstHomework/models"
 	"fmt"
 	"strings"
 )
+//Игрок
+type Player struct {
+	//Инвентарь игрока
+	Inventory map[string]*Item
+	//Инвентарь доступен
+	IsInventoryAccess bool
+	//Текущая локация пользователя
+	CurrentLocathion *Room
+}
+//Контейнер (на столе, на стуле)
+type Container struct {
+	//Имя контейнера
+	Name string
+	//Предметы, которые хранятся в контейнере
+	InternalItems []*Item
+}
+//Таргеты в комнатах, которые сопаствялются с определенными предметами и выдыют результат
+// [Дверь] - ключи, [Ключи] - дверь открыта 
+type Target struct {
+	//Имя таргета
+	Name string
+	//Мапа сопастовления имени таргета с предметом
+	ItemsApply map[string]*Item
+	//Мапа сопастовления предмета и результата использования с таргетом
+	ApplyResult map[*Item]string
+}
+//Комнаты
+type Room struct {
+	//Имя
+	Name string
+	//Описание, которое используется для формирования строки команды "Идти"
+	Description string
+	//Уникальный текст в начале, которое используется для формирования строки команды "Осмотреться" 
+	UniqueTextInStart string
+	//Уникальный текст в конце, которое используется для формирования строки команды "Осмотреться" 
+	UniqueTextInEnd string
+	//Строка выхода в другие комнаты, использовается для формирования сток команд "Идти" и "Осмотреться"
+	TextExitRooms string
+	//Общая строка для команды "Идти"
+	StringPrintToMove string
+	//Общая строка для команды "Осмотреться"
+	StringPrintToLookAround string
+	//Флаг, что комната закрыта и в нее нельзя пройти
+	IsLocked bool
+	//Строка для вывода при попытке зайти в закрытую комнату
+	LockedString string
+	//Сопастовление имен комнат и объектов комнат
+	ExitRooms map[string]*Room
+	//Слайс всех контейнеров, которые доступны в комнате
+	Containers []*Container
+	//Таргеты, которые доступны в комнате
+	Targets map[string]*Target
+}
+
+type Item struct {
+	//Название предмета
+	Name string
+	//Флаг, который проверяет можно ли взять предмет в инвентарь
+	IsTake bool
+	//Флаг, который проверяет можно ли надеть предмеи
+	IsWearing bool
+	//Функция предмета при применении
+	OnApply func(p *Player) 
+	//Функция предмета, если ее одевает игрок
+	OnWearing func(p *Player) 
+}
 
 //------------База данных игры--------------//
 
@@ -16,7 +81,7 @@ var RoomsGame map[string]*Room
 //------------------------------------------//
 
 //---------Вспомогательные функции--------------//
-
+//Функция проверки предмета в контейнерах комнаты
 func checkItemInContainer(containers []*Container, item string) *Item {
 	var itemObject *Item
 
@@ -30,7 +95,7 @@ func checkItemInContainer(containers []*Container, item string) *Item {
 		}
 	return itemObject
 }
-
+//Функция удаления предмета из контейнера после команды "Взять"
 func deleteItemInContainer(containers []*Container, item *Item) bool {
 		for index, container := range containers {
 			for index, itemInContainer := range container.InternalItems {
@@ -45,7 +110,7 @@ func deleteItemInContainer(containers []*Container, item *Item) bool {
 		}
 	return false
 }
-
+//Функция удаления контейнера из комнаты, если в контейнере кмонаты не осталось предмета
 func deleteContainerInRoom(room *Room) bool {
 	for index, container := range room.Containers {
 		if len(container.InternalItems) == 0 {
@@ -55,7 +120,7 @@ func deleteContainerInRoom(room *Room) bool {
 	}
 	return false
 }
-
+//Функция формирования строки для команды "Осмотреться", которая собирает каждый контейнер и предметы в нем
 func createStringPrintToLookAround(room *Room) string {
 	var sliceStringContainer []string
 	var stringContainer string
@@ -74,7 +139,7 @@ func createStringPrintToLookAround(room *Room) string {
 		return fmt.Sprintf("пустая %s", room.Name)
 	}
 }
-
+//Функция обновления строкии для команды "Осмотреться"
 func updateStringToLook(room *Room)  {
 	room.StringPrintToLookAround = room.UniqueTextInStart + createStringPrintToLookAround(room) + room.UniqueTextInEnd + room.TextExitRooms
 
@@ -90,17 +155,6 @@ func main() {
 		но тогда у вас не будет работать через go run main.go
 		очень круто будет сделать построчный ввод команд тут, хотя это и не требуется по заданию
 	*/
-	initGame()
-	fmt.Println(handleCommand("осмотреться"))            // 1  осмотр на кухне
-fmt.Println(handleCommand("идти коридор"))           // 2  переход в коридор
-fmt.Println(handleCommand("идти комната"))           // 3  переход в комнату
-fmt.Println(handleCommand("осмотреться"))            // 4  осмотр комнаты
-fmt.Println(handleCommand("надеть рюкзак"))          // 5  надеть рюкзак
-fmt.Println(handleCommand("взять ключи"))            // 6  взять ключи
-fmt.Println(handleCommand("взять конспекты"))        // 7  взять конспекты
-fmt.Println(handleCommand("идти коридор"))           // 8  обратно в коридор
-fmt.Println(handleCommand("применить ключи дверь"))  // 9  открыть дверь
-fmt.Println(handleCommand("идти улица"))             // 10 выйти на улицу
 }
 
 func initGame() {
