@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strings"
 )
+
 //Игрок
 type Player struct {
 	//Инвентарь игрока
@@ -155,6 +158,17 @@ func main() {
 		но тогда у вас не будет работать через go run main.go
 		очень круто будет сделать построчный ввод команд тут, хотя это и не требуется по заданию
 	*/
+	reader := bufio.NewScanner(os.Stdin)
+	var command string
+
+	initGame()
+	for {
+		reader.Scan()
+		command = reader.Text()
+		fmt.Println(handleCommand(command))
+	}
+	
+	
 }
 
 func initGame() {
@@ -367,9 +381,7 @@ func initGame() {
 	toTake := func(player *Player, item string) string {
 		item = strings.ReplaceAll(item, " ", "")
 
-		if !player.IsInventoryAccess {
-			return "некуда класть"
-		}
+		
 
 		itemObject := checkItemInContainer(player.CurrentLocathion.Containers, item)
 
@@ -377,6 +389,10 @@ func initGame() {
 			return "нет такого"
 		}
 		
+	if !player.IsInventoryAccess {
+			return "некуда класть"
+		}
+
 		player.Inventory[itemObject.Name] = itemObject
 		isDeleted := deleteItemInContainer(player.CurrentLocathion.Containers, itemObject)
 		
@@ -397,17 +413,19 @@ func initGame() {
 		var target *Target
 		var item *Item
 		
+		if itemSearch, ok := player.Inventory[itemUse]; !ok {
+			return fmt.Sprintf("нет предмета в инвентаре - %s", itemUse)
+		} else {
+			item = itemSearch
+		}
+
 		if targetSearch, ok := player.CurrentLocathion.Targets[targetToApply]; !ok {
 			return "такого нет"
 		} else {
 			target = targetSearch
 		}
 
-		if itemSearch, ok := player.Inventory[itemUse]; !ok {
-			return fmt.Sprintf("нет предмета в инвентаре - %s", itemUse)
-		} else {
-			item = itemSearch
-		}
+		
 
 		if _, ok := target.ItemsApply[item.Name]; !ok {
 			return "не к чему применить"
@@ -449,6 +467,9 @@ func initGame() {
 func handleCommand(command string) string {
 	var funcActhion func(player *Player, roomGo string) string
 	commandSlice := strings.Fields(command)
+	if len(commandSlice) == 0 {
+		return "введите команду"
+	}
 	if funcCmd, ok := CommandsGame[commandSlice[0]]; !ok {
 		return "неизвестная команда"
 	} else {
