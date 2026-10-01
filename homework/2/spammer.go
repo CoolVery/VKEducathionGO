@@ -3,6 +3,10 @@ package main
 import (
 	"sync"
 )
+//Глобальный буфер для антибрута, сделано так, потому что менять сигнатуру фуннкций нельзя
+//Из себя этот буфер представляет буфферизированный канал, он будет копить в себе запросы
+//и блокироваться, если переполнен
+var buf = make(chan struct{}, HasSpamMaxAsyncRequests)
 
 func RunPipeline(cmds ...cmd) {
 	var wg sync.WaitGroup
@@ -116,6 +120,33 @@ func SelectMessages(in, out chan interface{}) {
 func CheckSpam(in, out chan interface{}) {
 	// in - MsgID
 	// out - MsgData
+	var wg sync.WaitGroup
+	//Проходим по каждому сообщению
+	for val := range in {
+		//Получаем сообщение
+		msg := val.(MsgID)
+		wg.Add(1)
+		go func(m MsgID) {
+			//Сначала регистрируем освобождение слота в буффере от антибрута, чтобы он точно выполнился
+			//После выполнения работы слот из буфера прочтется и освободится
+			defer func() { <-buf }()
+			//После wg.Done
+			defer wg.Done()
+			//Занимаем слот в буфере
+			buf <- struct{}{}
+			//Делаем запрос
+			res, err := HasSpam(m)
+			if err == nil {
+				//Создаем объект и отправляем
+				msgData := MsgData{
+					ID: m,
+					HasSpam: res,
+				}
+				out <- msgData
+			}
+		}(msg)
+	}
+	wg.Wait()
 }
 
 func CombineResults(in, out chan interface{}) {
