@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"slices"
 	"sync"
 )
+
 //Глобальный буфер для антибрута, сделано так, потому что менять сигнатуру фуннкций нельзя
 //Из себя этот буфер представляет буфферизированный канал, он будет копить в себе запросы
 //и блокироваться, если переполнен
@@ -152,4 +155,32 @@ func CheckSpam(in, out chan interface{}) {
 func CombineResults(in, out chan interface{}) {
 	// in - MsgData
 	// out - string
+	//Общий слайс для всех MsgData
+	resMsgData := make([]MsgData, 0)
+	//Читаем все из in
+	for val := range in {
+		msgData := val.(MsgData)
+		resMsgData = append(resMsgData, msgData)
+	}
+	//Сортируем
+	slices.SortFunc(resMsgData, func(a, b MsgData) int {
+		if a.HasSpam != b.HasSpam {
+        	if a.HasSpam {
+            	return -1
+        	}
+        return 1
+    	}
+    	switch {
+    	case a.ID < b.ID:
+        	return -1
+    	case a.ID > b.ID:
+        	return 1
+    	default:
+        	return 0
+    	}
+	})
+	//Отправляем строки
+	for _, m := range resMsgData {
+    	out <- fmt.Sprintf("%v %v", m.HasSpam, m.ID)
+	}
 }
