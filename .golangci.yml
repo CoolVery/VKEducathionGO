@@ -183,7 +183,7 @@ formatters: # Форматтеры кода (проверка стиля)
       sections: # Порядок группировки импортов
         - Standard  # Стандартная библиотека
         - Default   # Сторонние зависимости
-        - Prefix(github.com/olezhek28/grpc-workshop)  # Локальные импорты проекта
+        - Prefix(github.com/CoolVery/VKEducathionGO)  # Локальные импорты проекта
       no-inline-comments: false  # Разрешить комментарии после импортов (true — запретит)
   exclusions: # Не форматируем сгенерированный код (pkg/proto/**, *.pb.go и т.п.)
     generated: strict
