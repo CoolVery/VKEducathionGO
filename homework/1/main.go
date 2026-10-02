@@ -444,7 +444,7 @@ func initGame() {
 				return nextRoom.LockedString
 			}
 			player.CurrentLocathion = nextRoom
-			return fmt.Sprintf("%s", nextRoom.StringPrintToMove)
+			return nextRoom.StringPrintToMove
 		}
 	}
 
