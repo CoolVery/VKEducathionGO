@@ -113,7 +113,7 @@ func ReadAllXml() ([]User, error) {
 
 func GetInDb(sr SearchResponse) ([]User, error) {
 	var resultUser []User
-	if *sr.Query == "" {
+	if sr.Query == nil {
 		resultUsers, err := ReadAllXml()
 		if err != nil {
 			return nil, err
