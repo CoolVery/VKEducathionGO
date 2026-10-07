@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bufio"
+	"encoding/json"
 	"encoding/xml"
-	"errors"
-	"go/scanner"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -113,19 +113,78 @@ func ReadAllXml() ([]User, error) {
 
 func GetInDb(sr SearchResponse) ([]User, error) {
 	var resultUser []User
+	var err error
 	if sr.Query == nil {
-		resultUsers, err := ReadAllXml()
-		if err != nil {
-			return nil, err
+		resultUser, err = ReadAllXml()
+	} else {
+		resultUser, err = ReadWithFilterXml(*sr.Query)
+	}
+	if err != nil {
+  		return nil, err
+	}
+	if sr.OrderField != nil {
+		if sr.OrderBy != nil && *sr.OrderBy != 0 {
+			switch *sr.OrderField {
+			case "Id":
+				slices.SortFunc(resultUser, func(a, b User) int {
+					switch {
+					case a.ID > b.ID:
+						return 1 * *sr.OrderBy
+					case a.ID < b.ID:
+						return -1 * *sr.OrderBy
+					default:
+                		return 0
+            		}
+				})
+			case "Age":
+				slices.SortFunc(resultUser, func(a, b User) int {
+					switch {
+					case a.Age > b.Age:
+						return 1 * *sr.OrderBy
+					case a.Age < b.Age:
+						return -1 * *sr.OrderBy
+					default:
+                		return 0
+            		}
+				})
+			case "Name":
+				slices.SortFunc(resultUser, func(a, b User) int {
+					fullNameA := a.FirstName + a.LastName
+					fullNameB := b.FirstName + b.LastName
+					switch {
+					case fullNameA > fullNameB:
+						return 1 * *sr.OrderBy
+					case fullNameA < fullNameB:
+						return -1 * *sr.OrderBy
+					default:
+                		return 0
+            		}
+				})
+			}
 		}
 	} else {
-		resultUsers, err := ReadWithFilterXml(*sr.Query)
-		if err != nil {
-			return nil, err
+		if sr.OrderBy != nil && *sr.OrderBy != 0 { 
+			slices.SortFunc(resultUser, func(a, b User) int {
+				fullNameA := a.FirstName + a.LastName
+				fullNameB := b.FirstName + b.LastName
+				switch {
+				case fullNameA > fullNameB:
+					return 1 * *sr.OrderBy					
+				case fullNameA < fullNameB:
+					return -1 * *sr.OrderBy
+				default:
+            		return 0
+            	}
+			})
 		}
 	}
-
-	
+	if sr.Offset != nil {
+		resultUser = resultUser[*sr.Offset:]		
+	}
+	if sr.Limit != nil {
+		resultUser = resultUser[:*sr.Limit]
+	}
+	return resultUser, nil
 }
 
 func SearchServer(w http.ResponseWriter, r *http.Request) {
@@ -182,5 +241,14 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 	} else {
 		val := AccessOrderBy[0]
 		currentSearchResponse.OrderBy = &val
+	}
+	resultUsers, err := GetInDb(currentSearchResponse)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resultUsers); err != nil {
+    	fmt.Printf("encode response: %v", err)
 	}
 }
