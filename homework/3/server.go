@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-type SearchResponse struct {
+type SearchResponseServer struct {
 	Limit      *int
 	Offset     *int    // Можно учесть после сортировки
 	Query      *string // подстрока в 1 из полей
@@ -20,8 +20,14 @@ type SearchResponse struct {
 	//  1 по возрастанию, 0 как встретилось, -1 по убыванию
 	OrderBy *int
 }
-
-type User struct {
+type UserStruct struct {
+	ID     int
+	Name   string
+	Age    int
+	About  string
+	Gender string
+}
+type UserXml struct {
 	ID            int    `xml:"id"`
 	GUID          string `xml:"guid"`
 	IsActive      bool   `xml:"isActive"`
@@ -43,7 +49,7 @@ type User struct {
 
 type Users struct {
 	XMLName xml.Name `xml:"root"`
-	List []User `xml:"row"`
+	List []UserXml `xml:"row"`
 }
 
 var AccessOrderField = map[string]string {
@@ -58,8 +64,8 @@ var AccessOrderBy = map[int]int {
 	1: 1,
 }
 
-func ReadWithFilterXml(queryResponse string) ([]User, error) {
-	userList := make([]User, 0)
+func ReadWithFilterXml(queryResponse string) ([]UserXml, error) {
+	userList := make([]UserXml, 0)
 	
 	db, err := os.Open("dataset.xml")
 	defer db.Close()
@@ -80,7 +86,7 @@ func ReadWithFilterXml(queryResponse string) ([]User, error) {
 		switch t := tok.(type) {
 		case xml.StartElement:
 			if t.Name.Local == "row" {
-				var user User
+				var user UserXml
 				if err := dec.DecodeElement(&user, &t); err != nil {
 					return nil, err
 				}
@@ -94,7 +100,7 @@ func ReadWithFilterXml(queryResponse string) ([]User, error) {
 	return userList, nil
 }
 
-func ReadAllXml() ([]User, error) {	
+func ReadAllXml() ([]UserXml, error) {	
 	db, err := os.Open("dataset.xml")
 	defer db.Close()
 	if err != nil {
@@ -111,8 +117,8 @@ func ReadAllXml() ([]User, error) {
 }
 
 
-func GetInDb(sr SearchResponse) ([]User, error) {
-	var resultUser []User
+func GetInDb(sr SearchResponseServer) ([]UserXml, error) {
+	var resultUser []UserXml
 	var err error
 	if sr.Query == nil {
 		resultUser, err = ReadAllXml()
@@ -126,7 +132,7 @@ func GetInDb(sr SearchResponse) ([]User, error) {
 		if sr.OrderBy != nil && *sr.OrderBy != 0 {
 			switch *sr.OrderField {
 			case "Id":
-				slices.SortFunc(resultUser, func(a, b User) int {
+				slices.SortFunc(resultUser, func(a, b UserXml) int {
 					switch {
 					case a.ID > b.ID:
 						return 1 * *sr.OrderBy
@@ -137,7 +143,7 @@ func GetInDb(sr SearchResponse) ([]User, error) {
             		}
 				})
 			case "Age":
-				slices.SortFunc(resultUser, func(a, b User) int {
+				slices.SortFunc(resultUser, func(a, b UserXml) int {
 					switch {
 					case a.Age > b.Age:
 						return 1 * *sr.OrderBy
@@ -148,7 +154,7 @@ func GetInDb(sr SearchResponse) ([]User, error) {
             		}
 				})
 			case "Name":
-				slices.SortFunc(resultUser, func(a, b User) int {
+				slices.SortFunc(resultUser, func(a, b UserXml) int {
 					fullNameA := a.FirstName + a.LastName
 					fullNameB := b.FirstName + b.LastName
 					switch {
@@ -164,7 +170,7 @@ func GetInDb(sr SearchResponse) ([]User, error) {
 		}
 	} else {
 		if sr.OrderBy != nil && *sr.OrderBy != 0 { 
-			slices.SortFunc(resultUser, func(a, b User) int {
+			slices.SortFunc(resultUser, func(a, b UserXml) int {
 				fullNameA := a.FirstName + a.LastName
 				fullNameB := b.FirstName + b.LastName
 				switch {
@@ -190,7 +196,7 @@ func GetInDb(sr SearchResponse) ([]User, error) {
 func SearchServer(w http.ResponseWriter, r *http.Request) {
 	// Тут писать SearchServer
 	q := r.URL.Query()
-	currentSearchResponse := SearchResponse{}
+	currentSearchResponse := SearchResponseServer{}
 
 	if limit := q.Get("limit"); limit != "" {
 		l, err := strconv.Atoi(limit)
@@ -243,12 +249,23 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 		currentSearchResponse.OrderBy = &val
 	}
 	resultUsers, err := GetInDb(currentSearchResponse)
+	usersStruct := make([]UserStruct, 0, len(resultUsers))
+	for _, user := range resultUsers {
+		currentUser := UserStruct{
+			ID: user.ID,
+			Name: user.FirstName + user.LastName,
+			Age: user.Age,
+			About: user.About,
+			Gender: user.Gender,
+		}
+		usersStruct = append(usersStruct, currentUser)
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resultUsers); err != nil {
+	if err := json.NewEncoder(w).Encode(usersStruct); err != nil {
     	fmt.Printf("encode response: %v", err)
 	}
 }
