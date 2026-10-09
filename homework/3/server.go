@@ -53,9 +53,9 @@ type Users struct {
 }
 
 var AccessOrderField = map[string]string {
-	"Id": "Id",
-	"Age": "Age",
-	"Name": "Name",
+	"id": "id",
+	"age": "age",
+	"name": "name",
 }
 
 var AccessOrderBy = map[int]int {
@@ -76,7 +76,7 @@ func ReadWithFilterXml(queryResponse string) ([]UserXml, error) {
 	dec := xml.NewDecoder(db)
 	for {
 		tok, err := dec.Token()
-		if err != io.EOF {
+		if err == io.EOF {
 			break
 		}
 		if err != nil {
@@ -131,7 +131,7 @@ func GetInDb(sr SearchResponseServer) ([]UserXml, error) {
 	if sr.OrderField != nil {
 		if sr.OrderBy != nil && *sr.OrderBy != 0 {
 			switch *sr.OrderField {
-			case "Id":
+			case "id":
 				slices.SortFunc(resultUser, func(a, b UserXml) int {
 					switch {
 					case a.ID > b.ID:
@@ -142,7 +142,7 @@ func GetInDb(sr SearchResponseServer) ([]UserXml, error) {
                 		return 0
             		}
 				})
-			case "Age":
+			case "age":
 				slices.SortFunc(resultUser, func(a, b UserXml) int {
 					switch {
 					case a.Age > b.Age:
@@ -153,7 +153,7 @@ func GetInDb(sr SearchResponseServer) ([]UserXml, error) {
                 		return 0
             		}
 				})
-			case "Name":
+			case "name":
 				slices.SortFunc(resultUser, func(a, b UserXml) int {
 					fullNameA := a.FirstName + a.LastName
 					fullNameB := b.FirstName + b.LastName
@@ -201,7 +201,7 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 	if limit := q.Get("limit"); limit != "" {
 		l, err := strconv.Atoi(limit)
 		if err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
+			http.Error(w, "Limit invalid", http.StatusBadRequest)
 			return
 		}
 		currentSearchResponse.Limit = &l
@@ -210,7 +210,7 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 	if offset := q.Get("offset"); offset != "" {
 		o, err := strconv.Atoi(offset)
 		if err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
+			http.Error(w, "Offset invalid", http.StatusBadRequest)
 			return
 		}
 		currentSearchResponse.Offset = &o 
@@ -235,7 +235,7 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 	if orderBy := q.Get("order_by"); orderBy != "" {
 		ob, err := strconv.Atoi(orderBy)
 		if err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
+			http.Error(w, "OrderBy invalid", http.StatusBadRequest)
 			return
 		}
 		if _, ok := AccessOrderBy[ob]; !ok {
@@ -249,6 +249,10 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 		currentSearchResponse.OrderBy = &val
 	}
 	resultUsers, err := GetInDb(currentSearchResponse)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	usersStruct := make([]UserStruct, 0, len(resultUsers))
 	for _, user := range resultUsers {
 		currentUser := UserStruct{
@@ -260,10 +264,7 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 		}
 		usersStruct = append(usersStruct, currentUser)
 	}
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(usersStruct); err != nil {
     	fmt.Printf("encode response: %v", err)
