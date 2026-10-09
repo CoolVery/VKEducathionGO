@@ -52,6 +52,8 @@ type Users struct {
 	List []UserXml `xml:"row"`
 }
 
+var datasetPath = "dataset.xml"
+
 var AccessOrderField = map[string]string {
 	"id": "id",
 	"age": "age",
@@ -67,7 +69,7 @@ var AccessOrderBy = map[int]int {
 func ReadWithFilterXml(queryResponse string) ([]UserXml, error) {
 	userList := make([]UserXml, 0)
 	
-	db, err := os.Open("dataset.xml")
+	db, err := os.Open(datasetPath)
 	defer db.Close()
 	if err != nil {
 		return nil, err
@@ -101,7 +103,7 @@ func ReadWithFilterXml(queryResponse string) ([]UserXml, error) {
 }
 
 func ReadAllXml() ([]UserXml, error) {	
-	db, err := os.Open("dataset.xml")
+	db, err := os.Open(datasetPath)
 	defer db.Close()
 	if err != nil {
 		return nil, err

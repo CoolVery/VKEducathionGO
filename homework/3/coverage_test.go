@@ -328,7 +328,9 @@ func TestSearchServer(t *testing.T) {
 	t.Run("Чтение из файла", func(t *testing.T) {
 		t.Run("1 пользователь со всеми полями", testSearchServer_QueryOneUserWithAllField)
 		t.Run("34 пользователя с пустым query", testSearchServer_QueryAllUsersWithNilName)
-
+	})
+	t.Run("Чтение файла", func(t *testing.T) {
+		t.Run("Файла не существует", testSearchServer_FileDbNotExist)
 	})
 }
 
@@ -456,5 +458,26 @@ func testSearchServer_QueryAllUsersWithNilName(t *testing.T) {
 	}
 	if len(users) != 35 {
 		t.Fatalf("Ожидали, что вернется 35 пользователя, а пришло: %d", len(users))
+	}
+}
+func testSearchServer_FileDbNotExist(t *testing.T) {
+	old := datasetPath
+	datasetPath = "not_sxist.xml"
+	defer func() {datasetPath = old}()
+	ts := httptest.NewServer(http.HandlerFunc(SearchServer))
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL)
+	if err != nil {
+		t.Fatalf("Запрос вообще не прошел: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("Ожидали код 400, а пришло: %d", resp.StatusCode)
+
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if len(string(body)) == 0 {
+		t.Fatalf("Ожидали ошибку о не открытии файла")
 	}
 }
