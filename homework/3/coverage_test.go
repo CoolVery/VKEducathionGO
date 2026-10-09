@@ -499,8 +499,8 @@ func testSearchServer_FileDbNotExist(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
-	if len(string(body)) == 0 {
-		t.Fatalf("Ожидали ошибку о не открытии файла")
+	if !strings.Contains(string(body), "open not_sxist.xml"){
+		t.Fatalf("Ожидали ошибку open, а пришло: %v", string(body))
 	}
 }
 func TestServerSearchAndFindUser(t* testing.T) {
