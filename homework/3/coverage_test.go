@@ -328,6 +328,7 @@ func TestSearchServer(t *testing.T) {
 	t.Run("Чтение из файла", func(t *testing.T) {
 		t.Run("1 пользователь со всеми полями", testSearchServer_QueryOneUserWithAllField)
 		t.Run("34 пользователя с пустым query", testSearchServer_QueryAllUsersWithNilName)
+		t.Run("Возвращение KaneSharp", testSearchServer_QueryKaneSharp)
 	})
 	t.Run("Чтение файла", func(t *testing.T) {
 		t.Run("Файла не существует", testSearchServer_FileDbNotExist)
@@ -424,6 +425,24 @@ func testSearchServer_OrderByInvalidNotAccess(t *testing.T) {
 		t.Fatalf("Ожидали в теле ошибку OrderBy invalid, а получили: %s", body)
 	}
 }
+func testSearchServer_QueryAllUsersWithNilName(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(SearchServer))
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL)
+	if err != nil {
+		t.Fatalf("Запрос вообще не прошел: %v", err)
+	}
+	defer resp.Body.Close()
+	var users []User
+	body, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(body, &users); err != nil {
+		t.Fatalf("Ожидали список пользователей, а пришло: %v", err)
+	}
+	if len(users) != 35 {
+		t.Fatalf("Ожидали, что вернется 35 пользователя, а пришло: %d", len(users))
+	}
+}
 func testSearchServer_QueryOneUserWithAllField(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(SearchServer))
 	defer ts.Close()
@@ -442,11 +461,11 @@ func testSearchServer_QueryOneUserWithAllField(t *testing.T) {
 		t.Fatalf("Ожидали, что вернется 1 пользователь, а пришло: %d", len(users))
 	}
 }
-func testSearchServer_QueryAllUsersWithNilName(t *testing.T) {
+func testSearchServer_QueryKaneSharp(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(SearchServer))
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL)
+	resp, err := http.Get(ts.URL + "?query=KaneSharp")
 	if err != nil {
 		t.Fatalf("Запрос вообще не прошел: %v", err)
 	}
@@ -456,8 +475,11 @@ func testSearchServer_QueryAllUsersWithNilName(t *testing.T) {
 	if err := json.Unmarshal(body, &users); err != nil {
 		t.Fatalf("Ожидали список пользователей, а пришло: %v", err)
 	}
-	if len(users) != 35 {
+	if len(users) != 1 {
 		t.Fatalf("Ожидали, что вернется 35 пользователя, а пришло: %d", len(users))
+	}
+	if users[0].Name != "KaneSharp" {
+		t.Fatalf("Ожидали, что вернется пользователь c именем KaneSharp, а пришел: %s", users[0].Name)
 	}
 }
 func testSearchServer_FileDbNotExist(t *testing.T) {
