@@ -503,3 +503,29 @@ func testSearchServer_FileDbNotExist(t *testing.T) {
 		t.Fatalf("Ожидали ошибку о не открытии файла")
 	}
 }
+func TestServerSearchAndFindUser(t* testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(SearchServer))
+	defer ts.Close()
+	sc := &SearchClient{
+		AccessToken: "test-token",
+		URL: ts.URL,
+	}
+	req := SearchRequest{
+		Limit: 1,
+		OrderBy: -1,
+		OrderField: "age",
+		Offset: 0,
+		Query: "on",
+	}
+	res, err := sc.FindUsers(req)
+	if err != nil {
+		t.Fatalf("Ожидали одного пользователя, а пришло: %v", err)
+	}
+	if res.NextPage == false {
+		t.Fatalf("NextPage должен быть true")
+	}
+	if len(res.Users) != 1 {
+		t.Fatalf("Ожидали одного пользователя, а пришло: %d", len(res.Users))
+
+	}
+}
