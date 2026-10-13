@@ -316,7 +316,6 @@ func testFindUser_CheckLimitAndNextPage(t *testing.T) {
 		t.Fatal("Ожидали nil в err")
 	}
 }
-
 func TestSearchServer(t *testing.T) {
 	t.Run("Параметр invalid", func(t *testing.T) {
 		t.Run("Offset invalid", testSearchServer_OffsetInvalid)
@@ -326,7 +325,7 @@ func TestSearchServer(t *testing.T) {
 		t.Run("OrderBy invalid not access", testSearchServer_OrderByInvalidNotAccess)
 	})
 	t.Run("Чтение из файла", func(t *testing.T) {
-		t.Run("1 пользователь со всеми полями", testSearchServer_QueryOneUserWithAllField)
+		t.Run("Сортировка по разным полям", testSearchServer_QueryWithDifferentSortingFields)
 		t.Run("34 пользователя с пустым query", testSearchServer_QueryAllUsersWithNilName)
 		t.Run("Возвращение KaneSharp", testSearchServer_QueryKaneSharp)
 	})
@@ -443,22 +442,62 @@ func testSearchServer_QueryAllUsersWithNilName(t *testing.T) {
 		t.Fatalf("Ожидали, что вернется 35 пользователя, а пришло: %d", len(users))
 	}
 }
-func testSearchServer_QueryOneUserWithAllField(t *testing.T) {
+func testSearchServer_QueryWithDifferentSortingFields(t *testing.T) {
+	testCases := []struct {
+		name 			string
+		query 			string
+		codeError 	 	int
+		textError		string
+		wantUser  		User
+		wantLenResult	int
+	}{
+		{"1 пользователь c максимальным возрастом по убыванию", "?order_by=-1&order_field=age&limit=1&offset=0", 200, "", User{
+			ID: 32, 
+			Name: "ChristyKnapp", 
+			Age: 40, 
+			Gender: "female", 
+			About: "Incididunt culpa dolore laborum cupidatat consequat. Aliquip cupidatat pariatur sit consectetur laboris labore anim labore. Est sint ut ipsum dolor ipsum nisi tempor in tempor aliqua. Aliquip labore cillum est consequat anim officia non reprehenderit ex duis elit. Amet aliqua eu ad velit incididunt ad ut magna. Culpa dolore qui anim consequat commodo aute.\n",}, 1},
+		{"1 пользователь c максимальным id по убыванию", "?order_by=-1&order_field=id&limit=1&offset=0", 200, "", User{
+			ID: 34, 
+			Name: "KaneSharp", 
+			Age: 34,
+			Gender: "male",
+			About: "Lorem proident sint minim anim commodo cillum. Eiusmod velit culpa commodo anim consectetur consectetur sint sint labore. Mollit consequat consectetur magna nulla veniam commodo eu ut et. Ut adipisicing qui ex consectetur officia sint ut fugiat ex velit cupidatat fugiat nisi non. Dolor minim mollit aliquip veniam nostrud. Magna eu aliqua Lorem aliquip.\n",}, 1},
+		{"1 пользователь c максимальным name по убыванию", "?order_by=-1&order_field=name&limit=1&offset=0", 200, "", User{
+			ID: 13, 
+			Name: "WhitleyDavidson", 
+			Age: 40, 
+			Gender: "male", 
+			About: "Consectetur dolore anim veniam aliqua deserunt officia eu. Et ullamco commodo ad officia duis ex incididunt proident consequat nostrud proident quis tempor. Sunt magna ad excepteur eu sint aliqua eiusmod deserunt proident. Do labore est dolore voluptate ullamco est dolore excepteur magna duis quis. Quis laborum deserunt ipsum velit occaecat est laborum enim aute. Officia dolore sit voluptate quis mollit veniam. Laborum nisi ullamco nisi sit nulla cillum et id nisi.\n"}, 1},
+		{"1 пользователь c максимальным name без OrderField по убыванию", "?order_by=-1&limit=1&offset=0", 200, "", User{
+			ID: 13, 
+			Name: "WhitleyDavidson", 
+			Age: 40, 
+			Gender: "male", 
+			About: "Consectetur dolore anim veniam aliqua deserunt officia eu. Et ullamco commodo ad officia duis ex incididunt proident consequat nostrud proident quis tempor. Sunt magna ad excepteur eu sint aliqua eiusmod deserunt proident. Do labore est dolore voluptate ullamco est dolore excepteur magna duis quis. Quis laborum deserunt ipsum velit occaecat est laborum enim aute. Officia dolore sit voluptate quis mollit veniam. Laborum nisi ullamco nisi sit nulla cillum et id nisi.\n"}, 1},
+	}
 	ts := httptest.NewServer(http.HandlerFunc(SearchServer))
 	defer ts.Close()
-
-	resp, err := http.Get(ts.URL + "?order_by=-1&order_field=age&limit=1&offset=0&query=on")
-	if err != nil {
-		t.Fatalf("Запрос вообще не прошел: %v", err)
-	}
-	defer resp.Body.Close()
-	var users []User
-	body, _ := io.ReadAll(resp.Body)
-	if err := json.Unmarshal(body, &users); err != nil {
-		t.Fatalf("Ожидали список пользователей, а пришло: %v", err)
-	}
-	if len(users) != 1 {
-		t.Fatalf("Ожидали, что вернется 1 пользователь, а пришло: %d", len(users))
+	for _, test := range testCases {
+		resp, err := http.Get(ts.URL + test.query)
+		if err != nil {
+			t.Fatalf("Запрос вообще не прошел: %v", err)
+		}
+		if resp.StatusCode != test.codeError {
+			t.Fatalf("Ожидали статус код: %d, а пришел: %d", test.codeError, resp.StatusCode)
+		}
+		defer resp.Body.Close()
+		var users []User
+		body, _ := io.ReadAll(resp.Body)
+		if err := json.Unmarshal(body, &users); err != nil {
+			t.Fatalf("Ожидали список пользователей, а пришло: %v", err)
+		}
+		if len(users) != test.wantLenResult {
+			t.Fatalf("Ожидали, что вернется 1 пользователь, а пришло: %d", len(users))
+		}
+		if users[0] != test.wantUser {
+			t.Fatalf("Ожидали, что вернется  пользователь: %v а пришел: %v", test.wantUser, users[0])
+		}
 	}
 }
 func testSearchServer_QueryKaneSharp(t *testing.T) {
@@ -490,7 +529,7 @@ func testSearchServer_FileDbNotExist(t *testing.T) {
 	testCases := []struct {
 		name string
 		query string
-		wantError string
+		textError string
 		codeError int
 	}{
 		{"Файла нет при чтении всего файла", "", "open not_sxist.xml", 400},
@@ -509,7 +548,7 @@ func testSearchServer_FileDbNotExist(t *testing.T) {
 		}
 		defer resp.Body.Close()
 		body, _ := io.ReadAll(resp.Body)
-		if !strings.Contains(string(body), test.wantError){
+		if !strings.Contains(string(body), test.textError){
 			t.Fatalf("Ожидали ошибку open, а пришло: %v", string(body))
 		}
 	}

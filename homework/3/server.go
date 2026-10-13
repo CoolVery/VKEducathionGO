@@ -163,21 +163,6 @@ func GetInDb(sr SearchResponseServer) ([]UserXml, error) {
 				})
 			}
 		}
-	} else {
-		if sr.OrderBy != nil && *sr.OrderBy != 0 { 
-			slices.SortFunc(resultUser, func(a, b UserXml) int {
-				fullNameA := a.FirstName + a.LastName
-				fullNameB := b.FirstName + b.LastName
-				switch {
-				case fullNameA > fullNameB:
-					return 1 * *sr.OrderBy					
-				case fullNameA < fullNameB:
-					return -1 * *sr.OrderBy
-				default:
-            		return 0
-            	}
-			})
-		}
 	}
 	if sr.Offset != nil {
 		resultUser = resultUser[*sr.Offset:]		
@@ -223,7 +208,7 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		val := AccessOrderField["Name"]
+		val := AccessOrderField["name"]
 		currentSearchResponse.OrderField = &val
 	}
 
