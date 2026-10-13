@@ -20,13 +20,6 @@ type SearchResponseServer struct {
 	//  1 по возрастанию, 0 как встретилось, -1 по убыванию
 	OrderBy *int
 }
-type UserStruct struct {
-	ID     int
-	Name   string
-	Age    int
-	About  string
-	Gender string
-}
 type UserXml struct {
 	ID            int    `xml:"id"`
 	GUID          string `xml:"guid"`
@@ -255,9 +248,9 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	usersStruct := make([]UserStruct, 0, len(resultUsers))
+	usersStruct := make([]User, 0, len(resultUsers))
 	for _, user := range resultUsers {
-		currentUser := UserStruct{
+		currentUser := User{
 			ID: user.ID,
 			Name: user.FirstName + user.LastName,
 			Age: user.Age,

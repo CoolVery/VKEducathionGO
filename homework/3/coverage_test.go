@@ -486,21 +486,32 @@ func testSearchServer_FileDbNotExist(t *testing.T) {
 	old := datasetPath
 	datasetPath = "not_sxist.xml"
 	defer func() {datasetPath = old}()
+
+	testCases := []struct {
+		name string
+		query string
+		wantError string
+		codeError int
+	}{
+		{"Файла нет при чтении всего файла", "", "open not_sxist.xml", 400},
+		{"Файла нет при чтении с запросом", "?query=on", "open not_sxist.xml", 400},
+	}
+
 	ts := httptest.NewServer(http.HandlerFunc(SearchServer))
 	defer ts.Close()
-
-	resp, err := http.Get(ts.URL)
-	if err != nil {
-		t.Fatalf("Запрос вообще не прошел: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("Ожидали код 400, а пришло: %d", resp.StatusCode)
-
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), "open not_sxist.xml"){
-		t.Fatalf("Ожидали ошибку open, а пришло: %v", string(body))
+	for _, test := range testCases {
+		resp, err := http.Get(ts.URL + test.query)
+		if err != nil {
+			t.Fatalf("Запрос вообще не прошел: %v", err)
+		}
+		if resp.StatusCode != test.codeError {
+			t.Fatalf("Ожидали код 400, а пришло: %d", resp.StatusCode)
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), test.wantError){
+			t.Fatalf("Ожидали ошибку open, а пришло: %v", string(body))
+		}
 	}
 }
 func TestServerSearchAndFindUser(t* testing.T) {
