@@ -16,6 +16,7 @@ var (
 
 	// Урл, в который будет стучаться телега при получении сообщения от пользователя.
 	// Может быть как айпишником личной виртуалки, так и просто выдан сервисом для деплоя
+	// для serveo туннируем - ssh -R 80:localhost:3000 serveo.net
 	WebhookURL = os.Getenv("WEBHOOK")
 )
 
@@ -24,8 +25,19 @@ func startTaskBot(ctx context.Context) error {
 	if err != nil {
 		log.Fatalln(CreateErrMsg(ErrLaunchBot, err))
 	}
-	return nil
+
+	wh, err := tgbotapi.NewWebhook(WebhookURL)
+	if err != nil {
+		log.Fatalln(CreateErrMsg(ErrLaunchWebHook, err))
+	}
 	
+	_, err = bot.Request(wh)
+	if err != nil {
+		log.Fatalln(CreateErrMsg(ErrSetWebHook, err))
+	}
+	
+	return nil
+
 }
 
 func main() {
