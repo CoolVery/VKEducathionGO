@@ -8,26 +8,32 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/skinass/telegram-bot-api/v5"
 )
 
-var (
-	// @BotFather в телеграме даст вам токен. Если захотите потыкать своего бота через телегу - используйте именно его
-	BotToken = os.Getenv("BOTTOKEN")
+// var (
+// 	// @BotFather в телеграме даст вам токен. Если захотите потыкать своего бота через телегу - используйте именно его
+// 	BotToken = os.Getenv("BOTTOKEN")
 
-	// Урл, в который будет стучаться телега при получении сообщения от пользователя.
-	// Может быть как айпишником личной виртуалки, так и просто выдан сервисом для деплоя
-	// для serveo туннируем - ssh -R 80:localhost:3000 serveo.net
-	WebhookURL = os.Getenv("WEBHOOK")
-)
+// 	// Урл, в который будет стучаться телега при получении сообщения от пользователя.
+// 	// Может быть как айпишником личной виртуалки, так и просто выдан сервисом для деплоя
+// 	// для serveo туннируем - ssh -R 80:localhost:3000 serveo.net
+// 	WebhookURL = os.Getenv("WEBHOOK")
+// )
 
 func startTaskBot(ctx context.Context) error {
-	bot, err := tgbotapi.NewBotAPI(BotToken)
+	if err := godotenv.Load(); err != nil {
+		log.Fatalln(CreateErrMsg(ErrLaunchEnv, err))
+	}
+	botToken := os.Getenv("BOTTOKEN")
+	webHook := os.Getenv("WEBHOOK")
+	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		log.Fatalln(CreateErrMsg(ErrLaunchBot, err))
 	}
 
-	wh, err := tgbotapi.NewWebhook(WebhookURL)
+	wh, err := tgbotapi.NewWebhook(webHook)
 	if err != nil {
 		log.Fatalln(CreateErrMsg(ErrLaunchWebHook, err))
 	}
@@ -44,7 +50,7 @@ func startTaskBot(ctx context.Context) error {
 	})
 
 	go func() {
-		log.Fatalln(CreateErrMsg(ErrLaunchServer, http.ListenAndServe("", nil)))
+		log.Fatalln(CreateErrMsg(ErrLaunchServer, http.ListenAndServe(":3000", nil)))
 	}()
 	log.Println("Setart server")
 	

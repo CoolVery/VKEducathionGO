@@ -7,6 +7,7 @@ var (
 	ErrLaunchWebHook = errors.New("Не удалось создать вебхук")
 	ErrSetWebHook = errors.New("Не удалось установить вебхук")
 	ErrLaunchServer = errors.New("Не удалось запустить сервер")
+	ErrLaunchEnv = errors.New("Не удалось обработать .env")
 )
 
 func CreateErrMsg(errClient, errInner error) string {
