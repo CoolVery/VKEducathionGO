@@ -6,7 +6,7 @@ var (
 	ErrLaunchBot = errors.New("Не получилось запустить бота")
 	ErrLaunchWebHook = errors.New("Не удалось создать вебхук")
 	ErrSetWebHook = errors.New("Не удалось установить вебхук")
-
+	ErrLaunchServer = errors.New("Не удалось запустить сервер")
 )
 
 func CreateErrMsg(errClient, errInner error) string {

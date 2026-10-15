@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/skinass/telegram-bot-api/v5"
@@ -36,6 +37,24 @@ func startTaskBot(ctx context.Context) error {
 		log.Fatalln(CreateErrMsg(ErrSetWebHook, err))
 	}
 	
+	newMessages := bot.ListenForWebhook("/")
+
+	http.HandleFunc("/state", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Server alive"))
+	})
+
+	go func() {
+		log.Fatalln(CreateErrMsg(ErrLaunchServer, http.ListenAndServe("", nil)))
+	}()
+	log.Println("Setart server")
+	
+	for message := range newMessages {
+		msg := tgbotapi.NewMessage(
+			message.Message.Chat.ID,
+			"Hey",
+		)
+		bot.Send(msg)
+	}
 	return nil
 
 }
