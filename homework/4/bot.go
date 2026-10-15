@@ -52,9 +52,10 @@ func startTaskBot(ctx context.Context) error {
 	go func() {
 		log.Fatalln(CreateErrMsg(ErrLaunchServer, http.ListenAndServe(":3000", nil)))
 	}()
-	log.Println("Setart server")
+	log.Println("Start server")
 	
 	for message := range newMessages {
+		log.Println(message.Message.Chat.ID, " | ", message.Message.From.UserName, " | ", message.Message.Text)
 		msg := tgbotapi.NewMessage(
 			message.Message.Chat.ID,
 			"Hey",
