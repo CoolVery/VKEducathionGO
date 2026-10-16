@@ -26,6 +26,7 @@ func startTaskBot(ctx context.Context) error {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalln(CreateErrMsg(ErrLaunchEnv, err))
 	}
+
 	botToken := os.Getenv("BOTTOKEN")
 	webHook := os.Getenv("WEBHOOK")
 	bot, err := tgbotapi.NewBotAPI(botToken)
