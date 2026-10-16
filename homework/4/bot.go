@@ -59,25 +59,34 @@ func startTaskBot(ctx context.Context) error {
 	
 	for message := range newMessages {
 		log.Println(message.Message.Chat.ID, " | ", message.Message.From.UserName, " | ", message.Message.Text)
-		var answer, cmdName string
+		var answer, cmdName, cmdArgs string
 		indexParseSymbol := strings.IndexAny(message.Message.Text, "_ ")
 		if indexParseSymbol == -1 {
 			cmdName = message.Message.Text
 		} else {
 			cmdName = message.Message.Text[:indexParseSymbol]
+			cmdArgs = strings.TrimSpace(message.Message.Text[indexParseSymbol+1:])
 		}
-		if cmd, ok := commands.Commands[cmdName]; !ok {
+		log.Println(cmdName, " | ", cmdArgs, " | ", message.Message.Text)
+
+		cmd, ok := commands.Commands[cmdName]
+		if !ok {
+			bot.Send(tgbotapi.NewMessage(
+				message.Message.Chat.ID,
+				"Такой команды нет",
+			))
+			continue
+		} 
+		if !cmd.WithArgs && cmdArgs != ""  {
 			bot.Send(tgbotapi.NewMessage(
 				message.Message.Chat.ID,
 				"Такого сообщения нет",
 			))
-		} else {
-			answer = cmd.Apply(message.Message.Text, message.SentFrom())
-			bot.Send(tgbotapi.NewMessage(
-				message.Message.Chat.ID,
-				answer,
-			))
+			continue
 		}
+		answer = cmd.Apply(cmdArgs, message.Message.From)
+		bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, answer))
+		
 	}
 	return nil
 
