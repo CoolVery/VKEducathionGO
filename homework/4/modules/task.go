@@ -1,4 +1,4 @@
-package module
+package modules
 
 import tgbotapi "github.com/skinass/telegram-bot-api/v5"
 
