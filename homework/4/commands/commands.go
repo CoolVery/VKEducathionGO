@@ -5,15 +5,21 @@ import (
 	"fmt"
 	. "hm4/errors"
 	. "hm4/modules"
+	"strconv"
 	"strings"
 
 	tgbotapi "github.com/skinass/telegram-bot-api/v5"
 )
 
+type outgoing struct {
+    ChatID int64
+    Text   string
+}
+
 type command struct {
 	Name	string
 	Sep byte
-	Apply 	func(ctx context.Context, args string, userSend *tgbotapi.User) string
+	Apply 	func(ctx context.Context, args string, userSend *tgbotapi.User) []outgoing
 }
 
 var Commands = map[string]command {
@@ -51,14 +57,14 @@ var Commands = map[string]command {
 	},
 }
 
-func applyCmdTasks(ctx context.Context, value string, userSend *tgbotapi.User) string {
+func applyCmdTasks(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
 	if value != "" {
-		return ErrArdsIsNotNil.Error()
+		return []outgoing{{userSend.ID, ErrArdsIsNotNil.Error()}}
 	}
 
 	select {
 	case <-ctx.Done():
-		return ErrCtxDone.Error()
+		return []outgoing{{userSend.ID, ErrCtxDone.Error()}}
 	default:
 	}
 
@@ -83,37 +89,66 @@ assignee: @%s`, task.ID, task.Description, task.Author.UserName, task.Executor.U
 		}
 	}
 	result := strings.Join(printAllTask, "\n\n")
-	return result
+	return []outgoing{{userSend.ID, result}}
 }
-func applyCmdNew(ctx context.Context, value string, userSend *tgbotapi.User) string {
+func applyCmdNew(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
 	if value == "" {
-		return ErrArgsIsNil.Error()
+		return []outgoing{{userSend.ID, ErrArgsIsNil.Error()}}
 	}
 
 	select {
     case <-ctx.Done():
-        return ErrCtxDone.Error()
+		return []outgoing{{userSend.ID, ErrCtxDone.Error()}}
     default:
     }
 
-	idNewTask := len(AllTasks) + 1
-	newTask := NewTask(idNewTask, value, userSend)
+	newTask := NewTask(MaxId, value, userSend)
+	MaxId++
 	AllTasks = append(AllTasks, newTask)
-	return fmt.Sprintf("Задача \"%s\" создана, id=%d", value, idNewTask)
+	result := fmt.Sprintf("Задача \"%s\" создана, id=%d", value, newTask.ID)
+	return []outgoing{{userSend.ID, result}}
 }
 
-func applyCmdAssign(ctx context.Context, value string, userSend *tgbotapi.User) string {
-	return "opa"
+func applyCmdAssign(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
+	if value == "" {
+		return []outgoing{{userSend.ID, ErrArgsIsNil.Error()}}
+	}
+
+	select {
+	case <- ctx.Done():
+		return []outgoing{{userSend.ID, ErrArdsIsNotNil.Error()}}
+	default:
+	}
+	valueNum, err := strconv.Atoi(value)
+	if err != nil {
+		return []outgoing{{userSend.ID, ErrConvertStringToNum.Error()}}
+	}
+	var result string
+	var allOutgoing []outgoing
+	for _, task := range AllTasks {
+		if task.ID == valueNum {
+			switch task.Executor == nil {
+			case true:
+				if task.Author.ID != userSend.ID {
+					result = fmt.Sprintf(`Задача "%s" назначена на @%s`, task.Description, userSend.UserName)
+					allOutgoing = append(allOutgoing, outgoing{task.Author.ID, result})	
+				} 
+				result = fmt.Sprintf(`Задача "%s" назначена на вас`, task.Description)
+				allOutgoing = append(allOutgoing, outgoing{userSend.ID, result})
+			}
+		}
+	}
+		return allOutgoing
 }
-func applyCmdUnassign(ctx context.Context, value string, userSend *tgbotapi.User) string {
-	return "opa"
+func applyCmdUnassign(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
+		return []outgoing{{userSend.ID, "result"}}
 }
-func applyCmdResolve(ctx context.Context, value string, userSend *tgbotapi.User) string {
-	return "opa"
+func applyCmdResolve(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
+		return []outgoing{{userSend.ID, "result"}}
 }
-func applyCmdMy(ctx context.Context, value string, userSend *tgbotapi.User) string {
-	return "opa"
+func applyCmdMy(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
+		return []outgoing{{userSend.ID, "result"}}
 }
-func applyCmdOwner(ctx context.Context, value string, userSend *tgbotapi.User) string {
-	return "opa"
+func applyCmdOwner(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
+		return []outgoing{{userSend.ID, "result"}}
 }

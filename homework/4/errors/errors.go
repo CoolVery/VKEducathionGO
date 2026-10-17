@@ -12,6 +12,7 @@ var (
 	ErrArgsIsNil = errors.New("У команды не может быть пустные аргументы")
 	ErrArdsIsNotNil = errors.New("У команды не должно быть аргументов")
 	ErrCtxDone = errors.New("Дейсвтие было отменено")
+	ErrConvertStringToNum = errors.New("Аргумент не получилось конвертировать в число")
 )
 
 func CreateErrMsg(errClient, errInner error) string {

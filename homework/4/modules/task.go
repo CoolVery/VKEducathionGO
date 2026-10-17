@@ -3,6 +3,7 @@ package modules
 import tgbotapi "github.com/skinass/telegram-bot-api/v5"
 
 var AllTasks = []Task{}
+var MaxId = 1
 
 
 type Task struct {
