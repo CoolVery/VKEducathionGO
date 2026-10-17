@@ -1,10 +1,9 @@
 package main
 
-// сюда писать код
-
 import (
 	"context"
 	"hm4/commands"
+	. "hm4/errors"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +12,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/skinass/telegram-bot-api/v5"
 )
+
+
 
 // var (
 // 	// @BotFather в телеграме даст вам токен. Если захотите потыкать своего бота через телегу - используйте именно его

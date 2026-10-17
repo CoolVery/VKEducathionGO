@@ -1,4 +1,4 @@
-package main
+package errors
 
 import "errors"
 
@@ -9,6 +9,9 @@ var (
 	ErrLaunchServer = errors.New("Не удалось запустить сервер")
 	ErrLaunchEnv = errors.New("Не удалось обработать .env")
 	ErrCmdNotFound = errors.New("Такой команды нет")
+	ErrArgsIsNil = errors.New("У команды не может быть пустные аргументы")
+	ErrArdsIsNotNil = errors.New("У команды не должно быть аргументов")
+	ErrCtxDone = errors.New("Дейсвтие было отменено")
 )
 
 func CreateErrMsg(errClient, errInner error) string {

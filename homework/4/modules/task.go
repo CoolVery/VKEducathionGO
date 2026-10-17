@@ -2,6 +2,9 @@ package modules
 
 import tgbotapi "github.com/skinass/telegram-bot-api/v5"
 
+var AllTasks = []Task{}
+
+
 type Task struct {
 	ID 				int
 	Author     	*tgbotapi.User

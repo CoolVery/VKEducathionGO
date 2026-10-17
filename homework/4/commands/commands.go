@@ -1,11 +1,18 @@
 package commands
 
-import tgbotapi "github.com/skinass/telegram-bot-api/v5"
+import (
+	"context"
+	"fmt"
+	. "hm4/errors"
+	. "hm4/modules"
+
+	tgbotapi "github.com/skinass/telegram-bot-api/v5"
+)
 
 type command struct {
 	Name	string
 	Sep byte
-	Apply 	func(args string, userSend *tgbotapi.User) string
+	Apply 	func(ctx context.Context, args string, userSend *tgbotapi.User) string
 }
 
 var Commands = map[string]command {
@@ -43,24 +50,41 @@ var Commands = map[string]command {
 	},
 }
 
-func applyCmdTasks(value string, userSend *tgbotapi.User) string {
+func applyCmdTasks(ctx context.Context, value string, userSend *tgbotapi.User) string {
+	if value != "" {
+		return ErrArdsIsNotNil.Error()
+	}
 	return "opa"
 }
-func applyCmdNew(value string, userSend *tgbotapi.User) string {
+func applyCmdNew(ctx context.Context, value string, userSend *tgbotapi.User) string {
+	if value == "" {
+		return ErrArgsIsNil.Error()
+	}
+
+	select {
+    case <-ctx.Done():
+        return ErrCtxDone.Error()
+    default:
+    }
+
+	idNewTask := len(AllTasks) + 1
+	newTask := NewTask(idNewTask, value, userSend)
+	AllTasks = append(AllTasks, newTask)
+	return fmt.Sprintf("Задача \"%s\" создана, id=%d", value, idNewTask)
+}
+
+func applyCmdAssign(ctx context.Context, value string, userSend *tgbotapi.User) string {
 	return "opa"
 }
-func applyCmdAssign(value string, userSend *tgbotapi.User) string {
+func applyCmdUnassign(ctx context.Context, value string, userSend *tgbotapi.User) string {
 	return "opa"
 }
-func applyCmdUnassign(value string, userSend *tgbotapi.User) string {
+func applyCmdResolve(ctx context.Context, value string, userSend *tgbotapi.User) string {
 	return "opa"
 }
-func applyCmdResolve(value string, userSend *tgbotapi.User) string {
+func applyCmdMy(ctx context.Context, value string, userSend *tgbotapi.User) string {
 	return "opa"
 }
-func applyCmdMy(value string, userSend *tgbotapi.User) string {
-	return "opa"
-}
-func applyCmdOwner(value string, userSend *tgbotapi.User) string {
+func applyCmdOwner(ctx context.Context, value string, userSend *tgbotapi.User) string {
 	return "opa"
 }
