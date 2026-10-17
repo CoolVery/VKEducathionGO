@@ -5,6 +5,7 @@ import (
 	"fmt"
 	. "hm4/errors"
 	. "hm4/modules"
+	"strings"
 
 	tgbotapi "github.com/skinass/telegram-bot-api/v5"
 )
@@ -54,7 +55,35 @@ func applyCmdTasks(ctx context.Context, value string, userSend *tgbotapi.User) s
 	if value != "" {
 		return ErrArdsIsNotNil.Error()
 	}
-	return "opa"
+
+	select {
+	case <-ctx.Done():
+		return ErrCtxDone.Error()
+	default:
+	}
+
+	var printAllTask []string
+	for _, task := range AllTasks {
+		switch task.StatusCode {
+		case NotAssigned:
+			stringTask := fmt.Sprintf(`%d. %s by @%s
+/assign_%d`, task.ID, task.Description, task.Author.UserName, task.ID)
+			printAllTask = append(printAllTask, stringTask)
+		case Assigned:
+			var stringTask string
+			if task.Executor.ID == userSend.ID {
+				stringTask = fmt.Sprintf(`%d. %s by @%s
+assignee: я
+/unassign_%d /resolve_%d`, task.ID, task.Description, task.Author.UserName, task.ID, task.ID)
+			} else {
+			stringTask = fmt.Sprintf(`%d. %s by @%s
+assignee: @%s`, task.ID, task.Description, task.Author.UserName, task.Executor.UserName)
+			}
+			printAllTask = append(printAllTask, stringTask)
+		}
+	}
+	result := strings.Join(printAllTask, "\n\n")
+	return result
 }
 func applyCmdNew(ctx context.Context, value string, userSend *tgbotapi.User) string {
 	if value == "" {

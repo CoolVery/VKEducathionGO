@@ -95,7 +95,7 @@ func startTaskBot(ctx context.Context) error {
 		}
 
 		// 4. Вызвать обработчик и отправить ответ.
-		answer := cmd.Apply(args, message.Message.From)
+		answer := cmd.Apply(ctx, args, message.Message.From)
 		bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, answer))
 		
 	}
