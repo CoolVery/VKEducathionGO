@@ -59,32 +59,42 @@ func startTaskBot(ctx context.Context) error {
 	
 	for message := range newMessages {
 		log.Println(message.Message.Chat.ID, " | ", message.Message.From.UserName, " | ", message.Message.Text)
-		var answer, cmdName, cmdArgs string
-		indexParseSymbol := strings.IndexAny(message.Message.Text, "_ ")
-		if indexParseSymbol == -1 {
-			cmdName = message.Message.Text
-		} else {
-			cmdName = message.Message.Text[:indexParseSymbol]
-			cmdArgs = strings.TrimSpace(message.Message.Text[indexParseSymbol+1:])
-		}
-		log.Println(cmdName, " | ", cmdArgs, " | ", message.Message.Text)
+		text := message.Message.Text
 
-		cmd, ok := commands.Commands[cmdName]
-		if !ok {
-			bot.Send(tgbotapi.NewMessage(
-				message.Message.Chat.ID,
-				"Такой команды нет",
-			))
-			continue
-		} 
-		if !cmd.WithArgs && cmdArgs != ""  {
-			bot.Send(tgbotapi.NewMessage(
-				message.Message.Chat.ID,
-				"Такого сообщения нет",
-			))
-			continue
+		// 1. Грубо вытащить имя команды — только чтобы найти её в мапе.
+		head := ""
+		if idx := strings.IndexAny(text, "_ "); idx != -1 {
+		 	head = text[:idx]
 		}
-		answer = cmd.Apply(cmdArgs, message.Message.From)
+
+		// 2. Найти команду.
+		cmd, ok := commands.Commands[head]
+		if !ok {
+		    bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error()))
+		    continue
+		}
+
+		// 3. Строго проверить формат и достать аргумент.
+		var args string
+		if cmd.Sep == 0 {
+		    // Аргументов быть не должно — текст обязан точно совпасть с именем.
+		    if text != cmd.Name {
+		        bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error()))
+		        continue
+		    }
+		} else {
+		    // Ожидаемый префикс: имя + разделитель.
+		    prefix := cmd.Name + string(cmd.Sep)
+		    if !strings.HasPrefix(text, prefix) {
+		        bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error()))
+		        continue
+		    }
+		    // Всё после префикса — аргумент.
+		    args = strings.TrimSpace(text[len(prefix):])
+		}
+
+		// 4. Вызвать обработчик и отправить ответ.
+		answer := cmd.Apply(args, message.Message.From)
 		bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, answer))
 		
 	}

@@ -4,7 +4,7 @@ import tgbotapi "github.com/skinass/telegram-bot-api/v5"
 
 type command struct {
 	Name	string
-	WithArgs bool
+	Sep byte
 	Apply 	func(args string, userSend *tgbotapi.User) string
 }
 
@@ -15,21 +15,22 @@ var Commands = map[string]command {
 	},
 	"/new": {
 		Name: "/new",
+		Sep: ' ',
 		Apply: applyCmdNew,
 	},
 	"/assign": {
 		Name: "/assign",
-		WithArgs: true,
+		Sep: '_',
 		Apply: applyCmdAssign,
 	},
 	"/unassign": {
 		Name: "/unassign",
-		WithArgs: true,
+		Sep: '_',
 		Apply: applyCmdUnassign,
 	},
 	"/resolve": {
 		Name: "/resolve",
-		WithArgs: true,
+		Sep: '_',
 		Apply: applyCmdResolve,
 	},
 	"/my": {
@@ -37,7 +38,7 @@ var Commands = map[string]command {
 		Apply: applyCmdMy,
 	},
 	"/owner": {
-		Name: "/my",
+		Name: "/owner",
 		Apply: applyCmdOwner,
 	},
 }
