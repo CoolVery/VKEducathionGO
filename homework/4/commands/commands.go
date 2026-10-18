@@ -125,20 +125,29 @@ func applyCmdAssign(ctx context.Context, value string, userSend *tgbotapi.User) 
 	}
 	var result string
 	var allOutgoing []outgoing
-	for _, task := range AllTasks {
-		if task.ID == valueNum {
-			switch task.Executor == nil {
-			case true:
+	for i := range AllTasks {
+		if AllTasks[i].ID == valueNum {
+			task := &AllTasks[i]
+			switch task.StatusCode {
+			case NotAssigned:
 				if task.Author.ID != userSend.ID {
 					result = fmt.Sprintf(`Задача "%s" назначена на @%s`, task.Description, userSend.UserName)
 					allOutgoing = append(allOutgoing, outgoing{task.Author.ID, result})	
 				} 
 				result = fmt.Sprintf(`Задача "%s" назначена на вас`, task.Description)
+				task.Executor = userSend
+				task.StatusCode = Assigned
 				allOutgoing = append(allOutgoing, outgoing{userSend.ID, result})
+			case Assigned:
+				resultToExecutor := fmt.Sprintf(`Задача "%s" назначена на @%s`, task.Description, userSend.UserName)
+				allOutgoing = append(allOutgoing, outgoing{task.Executor.ID, resultToExecutor})	
+				resultToNewExecutor := fmt.Sprintf(`Задача "%s" назначена на вас`, task.Description)
+				allOutgoing = append(allOutgoing, outgoing{userSend.ID, resultToNewExecutor})
+				task.Executor = userSend
 			}
 		}
 	}
-		return allOutgoing
+	return allOutgoing
 }
 func applyCmdUnassign(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
 		return []outgoing{{userSend.ID, "result"}}
