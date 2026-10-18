@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"hm4/commands"
-	. "hm4/errors"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +9,9 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/skinass/telegram-bot-api/v5"
+
+	"hm4/commands"
+	. "hm4/errors"
 )
 
 
@@ -50,7 +51,9 @@ func startTaskBot(ctx context.Context) error {
 	newMessages := bot.ListenForWebhook("/")
 
 	http.HandleFunc("/state", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Server alive"))
+		if _, err := w.Write([]byte("Server alive")); err != nil {
+			log.Fatalln(CreateErrMsg(ErrHandleWrite, err))
+		}
 	})
 
 	go func() {
@@ -71,7 +74,9 @@ func startTaskBot(ctx context.Context) error {
 		// 2. Найти команду.
 		cmd, ok := commands.Commands[head]
 		if !ok {
-		    bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error()))
+		    if _, err := bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error())); err != nil {
+				log.Fatalln(CreateErrMsg(ErrNotBotSend, err))
+			}
 		    continue
 		}
 
@@ -80,15 +85,19 @@ func startTaskBot(ctx context.Context) error {
 		if cmd.Sep == 0 {
 		    // Аргументов быть не должно — текст обязан точно совпасть с именем.
 		    if text != cmd.Name {
-		        bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error()))
-		        continue
-		    }
+				if _, err := bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error())); err != nil {
+					log.Fatalln(CreateErrMsg(ErrNotBotSend, err))
+				}
+	        	continue
+		 	}
 		} else {
 		    // Ожидаемый префикс: имя + разделитель.
 		    prefix := cmd.Name + string(cmd.Sep)
 		    if !strings.HasPrefix(text, prefix) {
-		        bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error()))
-		        continue
+		        if _, err := bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error())); err != nil {
+					log.Fatalln(CreateErrMsg(ErrNotBotSend, err))
+				}
+	        	continue
 		    }
 		    // Всё после префикса — аргумент.
 		    args = strings.TrimSpace(text[len(prefix):])
@@ -97,7 +106,9 @@ func startTaskBot(ctx context.Context) error {
 		// 4. Вызвать обработчик и отправить ответ.
 		answer := cmd.Apply(ctx, args, message.Message.From)
 		for _, out := range answer {
-			bot.Send(tgbotapi.NewMessage(out.ChatID, out.Text))
+			if _, err := bot.Send(tgbotapi.NewMessage(out.ChatID, out.Text)); err != nil {
+				log.Fatalln(CreateErrMsg(ErrNotBotSend, err))
+			}
 		}
 		
 		

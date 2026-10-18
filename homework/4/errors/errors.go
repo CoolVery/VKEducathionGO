@@ -13,6 +13,8 @@ var (
 	ErrArdsIsNotNil = errors.New("У команды не должно быть аргументов")
 	ErrCtxDone = errors.New("Дейсвтие было отменено")
 	ErrConvertStringToNum = errors.New("Аргумент не получилось конвертировать в число")
+	ErrHandleWrite = errors.New("Ендпоинт не смог отправить информацию")
+	ErrNotBotSend = errors.New("Бот не смог отправить сообщение пользователю")
 )
 
 func CreateErrMsg(errClient, errInner error) string {
