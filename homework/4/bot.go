@@ -2,19 +2,17 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/skinass/telegram-bot-api/v5"
-
 	"hm4/commands"
-	. "hm4/errors"
+	"hm4/errs"
 )
-
-
 
 // var (
 // 	// @BotFather в телеграме даст вам токен. Если захотите потыкать своего бота через телегу - используйте именно его
@@ -26,95 +24,104 @@ import (
 // 	WebhookURL = os.Getenv("WEBHOOK")
 // )
 
-func startTaskBot(ctx context.Context) error {
+func loadEnv() error {
 	if err := godotenv.Load(); err != nil {
-		log.Fatalln(CreateErrMsg(ErrLaunchEnv, err))
+		return fmt.Errorf("%s", errs.CreateErrMsg(errs.ErrLaunchEnv, err))
+	}
+	return nil
+}
+
+func loadBot(botToken string) (*tgbotapi.BotAPI, error) {
+	bot, err := tgbotapi.NewBotAPI(botToken)
+	if err != nil {
+		return nil, fmt.Errorf("%s", errs.CreateErrMsg(errs.ErrLaunchBot, err))
+	}
+	return bot, nil
+}
+
+func loadWebHook(webHook string) (tgbotapi.WebhookConfig, error) {
+	wh, err := tgbotapi.NewWebhook(webHook)
+	if err != nil {
+		return tgbotapi.WebhookConfig{}, fmt.Errorf("%s", errs.CreateErrMsg(errs.ErrLaunchWebHook, err))
+	}
+	return wh, err
+}
+
+func loadSrv() {
+	http.HandleFunc("/state", func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write([]byte("Server alive")); err != nil {
+			log.Fatalln(errs.CreateErrMsg(errs.ErrHandleWrite, err))
+		}
+	})
+	srv := &http.Server{
+		Addr:         ":3000",
+		Handler:      nil,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+	go func() {
+		log.Fatalln(errs.CreateErrMsg(errs.ErrLaunchServer, srv.ListenAndServe()))
+	}()
+	log.Println("Start server")
+}
+
+func sendToUser(bot *tgbotapi.BotAPI, chatId int64, text string) error {
+	if _, err := bot.Send(tgbotapi.NewMessage(chatId, text)); err != nil {
+		return fmt.Errorf("%s", errs.CreateErrMsg(errs.ErrNotBotSend, err))
+	}
+	return nil
+}
+
+func handleMessage(ctx context.Context, bot *tgbotapi.BotAPI, msg *tgbotapi.Message) error {
+	log.Println(msg.Chat.ID, " | ", msg.From.UserName, " | ", msg.Text)
+
+	cmd, args, err := commands.ParseCommand(msg.Text)
+	if err != nil {
+		if err := sendToUser(bot, msg.Chat.ID, err.Error()); err != nil {
+			return err
+		}
+	}
+
+	for _, out := range cmd.Apply(ctx, args, msg.From) {
+		if err := sendToUser(bot, out.ChatID, out.Text); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func startTaskBot(ctx context.Context) error {
+	if err := loadEnv(); err != nil {
+		return err
 	}
 
 	botToken := os.Getenv("BOTTOKEN")
 	webHook := os.Getenv("WEBHOOK")
-	bot, err := tgbotapi.NewBotAPI(botToken)
+
+	bot, err := loadBot(botToken)
 	if err != nil {
-		log.Fatalln(CreateErrMsg(ErrLaunchBot, err))
+		return err
+	}
+	wh, err := loadWebHook(webHook)
+	if err != nil {
+		return err
 	}
 
-	wh, err := tgbotapi.NewWebhook(webHook)
-	if err != nil {
-		log.Fatalln(CreateErrMsg(ErrLaunchWebHook, err))
-	}
-	
 	_, err = bot.Request(wh)
 	if err != nil {
-		log.Fatalln(CreateErrMsg(ErrSetWebHook, err))
+		return fmt.Errorf("%s", errs.CreateErrMsg(errs.ErrSetWebHook, err))
 	}
-	
+
 	newMessages := bot.ListenForWebhook("/")
 
-	http.HandleFunc("/state", func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write([]byte("Server alive")); err != nil {
-			log.Fatalln(CreateErrMsg(ErrHandleWrite, err))
-		}
-	})
+	loadSrv()
 
-	go func() {
-		log.Fatalln(CreateErrMsg(ErrLaunchServer, http.ListenAndServe(":3000", nil)))
-	}()
-	log.Println("Start server")
-	
 	for message := range newMessages {
-		log.Println(message.Message.Chat.ID, " | ", message.Message.From.UserName, " | ", message.Message.Text)
-		text := message.Message.Text
-
-		// 1. Грубо вытащить имя команды — только чтобы найти её в мапе.
-		head := ""
-		if idx := strings.IndexAny(text, "_ "); idx != -1 {
-		 	head = text[:idx]
+		if err := handleMessage(ctx, bot, message.Message); err != nil {
+			return err
 		}
-
-		// 2. Найти команду.
-		cmd, ok := commands.Commands[head]
-		if !ok {
-		    if _, err := bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error())); err != nil {
-				log.Fatalln(CreateErrMsg(ErrNotBotSend, err))
-			}
-		    continue
-		}
-
-		// 3. Строго проверить формат и достать аргумент.
-		var args string
-		if cmd.Sep == 0 {
-		    // Аргументов быть не должно — текст обязан точно совпасть с именем.
-		    if text != cmd.Name {
-				if _, err := bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error())); err != nil {
-					log.Fatalln(CreateErrMsg(ErrNotBotSend, err))
-				}
-	        	continue
-		 	}
-		} else {
-		    // Ожидаемый префикс: имя + разделитель.
-		    prefix := cmd.Name + string(cmd.Sep)
-		    if !strings.HasPrefix(text, prefix) {
-		        if _, err := bot.Send(tgbotapi.NewMessage(message.Message.Chat.ID, ErrCmdNotFound.Error())); err != nil {
-					log.Fatalln(CreateErrMsg(ErrNotBotSend, err))
-				}
-	        	continue
-		    }
-		    // Всё после префикса — аргумент.
-		    args = strings.TrimSpace(text[len(prefix):])
-		}
-
-		// 4. Вызвать обработчик и отправить ответ.
-		answer := cmd.Apply(ctx, args, message.Message.From)
-		for _, out := range answer {
-			if _, err := bot.Send(tgbotapi.NewMessage(out.ChatID, out.Text)); err != nil {
-				log.Fatalln(CreateErrMsg(ErrNotBotSend, err))
-			}
-		}
-		
-		
 	}
 	return nil
-
 }
 
 func main() {

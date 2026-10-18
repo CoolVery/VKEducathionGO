@@ -3,86 +3,111 @@ package commands
 import (
 	"context"
 	"fmt"
-	. "hm4/errors"
-	. "hm4/modules"
 	"strconv"
 	"strings"
 
 	tgbotapi "github.com/skinass/telegram-bot-api/v5"
+	"hm4/errs"
+	"hm4/modules"
 )
 
 type outgoing struct {
-    ChatID int64
-    Text   string
+	ChatID int64
+	Text   string
 }
 
 type command struct {
-	Name	string
-	Sep byte
-	Apply 	func(ctx context.Context, args string, userSend *tgbotapi.User) []outgoing
+	Name  string
+	Sep   byte
+	Apply func(ctx context.Context, args string, userSend *tgbotapi.User) []outgoing
 }
 
-var Commands = map[string]command {
+var Commands = map[string]command{
 	"/tasks": {
-		Name: "/tasks",
+		Name:  "/tasks",
 		Apply: applyCmdTasks,
 	},
 	"/new": {
-		Name: "/new",
-		Sep: ' ',
+		Name:  "/new",
+		Sep:   ' ',
 		Apply: applyCmdNew,
 	},
 	"/assign": {
-		Name: "/assign",
-		Sep: '_',
+		Name:  "/assign",
+		Sep:   '_',
 		Apply: applyCmdAssign,
 	},
 	"/unassign": {
-		Name: "/unassign",
-		Sep: '_',
+		Name:  "/unassign",
+		Sep:   '_',
 		Apply: applyCmdUnassign,
 	},
 	"/resolve": {
-		Name: "/resolve",
-		Sep: '_',
+		Name:  "/resolve",
+		Sep:   '_',
 		Apply: applyCmdResolve,
 	},
 	"/my": {
-		Name: "/my",
+		Name:  "/my",
 		Apply: applyCmdMy,
 	},
 	"/owner": {
-		Name: "/owner",
+		Name:  "/owner",
 		Apply: applyCmdOwner,
 	},
 }
 
+func ParseCommand(text string) (command, string, error) {
+	head := text
+	if idx := strings.IndexAny(text, "_ "); idx != -1 {
+		head = text[:idx]
+	}
+
+	cmd, ok := Commands[head]
+	if !ok {
+		return command{}, "", errs.ErrCmdNotFound
+	}
+
+	if cmd.Sep == 0 {
+		if text != cmd.Name {
+			return command{}, "", errs.ErrCmdNotFound
+		}
+		return cmd, "", nil
+	}
+
+	prefix := cmd.Name + string(cmd.Sep)
+	if !strings.HasPrefix(text, prefix) {
+		return command{}, "", errs.ErrCmdNotFound
+	}
+	return cmd, strings.TrimSpace(text[len(prefix):]), nil
+}
+
 func applyCmdTasks(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
 	if value != "" {
-		return []outgoing{{userSend.ID, ErrArdsIsNotNil.Error()}}
+		return []outgoing{{userSend.ID, errs.ErrArdsIsNotNil.Error()}}
 	}
 
 	select {
 	case <-ctx.Done():
-		return []outgoing{{userSend.ID, ErrCtxDone.Error()}}
+		return []outgoing{{userSend.ID, errs.ErrCtxDone.Error()}}
 	default:
 	}
 
 	var printAllTask []string
-	for _, task := range AllTasks {
+	for _, task := range modules.AllTasks {
 		switch task.StatusCode {
-		case NotAssigned:
+		case modules.NotAssigned:
 			stringTask := fmt.Sprintf(`%d. %s by @%s
 /assign_%d`, task.ID, task.Description, task.Author.UserName, task.ID)
 			printAllTask = append(printAllTask, stringTask)
-		case Assigned:
+		case modules.Assigned:
 			var stringTask string
 			if task.Executor.ID == userSend.ID {
 				stringTask = fmt.Sprintf(`%d. %s by @%s
 assignee: я
 /unassign_%d /resolve_%d`, task.ID, task.Description, task.Author.UserName, task.ID, task.ID)
 			} else {
-			stringTask = fmt.Sprintf(`%d. %s by @%s
+				stringTask = fmt.Sprintf(`%d. %s by @%s
 assignee: @%s`, task.ID, task.Description, task.Author.UserName, task.Executor.UserName)
 			}
 			printAllTask = append(printAllTask, stringTask)
@@ -91,56 +116,57 @@ assignee: @%s`, task.ID, task.Description, task.Author.UserName, task.Executor.U
 	result := strings.Join(printAllTask, "\n\n")
 	return []outgoing{{userSend.ID, result}}
 }
+
 func applyCmdNew(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
 	if value == "" {
-		return []outgoing{{userSend.ID, ErrArgsIsNil.Error()}}
+		return []outgoing{{userSend.ID, errs.ErrArgsIsNil.Error()}}
 	}
 
 	select {
-    case <-ctx.Done():
-		return []outgoing{{userSend.ID, ErrCtxDone.Error()}}
-    default:
-    }
+	case <-ctx.Done():
+		return []outgoing{{userSend.ID, errs.ErrCtxDone.Error()}}
+	default:
+	}
 
-	newTask := NewTask(MaxId, value, userSend)
-	MaxId++
-	AllTasks = append(AllTasks, newTask)
+	newTask := modules.NewTask(modules.MaxId, value, userSend)
+	modules.MaxId++
+	modules.AllTasks = append(modules.AllTasks, newTask)
 	result := fmt.Sprintf("Задача \"%s\" создана, id=%d", value, newTask.ID)
 	return []outgoing{{userSend.ID, result}}
 }
 
 func applyCmdAssign(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
 	if value == "" {
-		return []outgoing{{userSend.ID, ErrArgsIsNil.Error()}}
+		return []outgoing{{userSend.ID, errs.ErrArgsIsNil.Error()}}
 	}
 
 	select {
-	case <- ctx.Done():
-		return []outgoing{{userSend.ID, ErrArdsIsNotNil.Error()}}
+	case <-ctx.Done():
+		return []outgoing{{userSend.ID, errs.ErrArdsIsNotNil.Error()}}
 	default:
 	}
 	valueNum, err := strconv.Atoi(value)
 	if err != nil {
-		return []outgoing{{userSend.ID, ErrConvertStringToNum.Error()}}
+		return []outgoing{{userSend.ID, errs.ErrConvertStringToNum.Error()}}
 	}
 	var result string
 	var allOutgoing []outgoing
-	for i := range AllTasks {
-		if AllTasks[i].ID == valueNum {
-			task := &AllTasks[i]
+	for i := range modules.AllTasks {
+		if modules.AllTasks[i].ID == valueNum {
+			task := &modules.AllTasks[i]
 			switch task.StatusCode {
-			case NotAssigned:
+			case modules.NotAssigned:
 				if task.Author.ID != userSend.ID {
 					result = fmt.Sprintf(`Задача "%s" назначена на @%s`, task.Description, userSend.UserName)
-					allOutgoing = append(allOutgoing, outgoing{task.Author.ID, result})	
-				} 
+					allOutgoing = append(allOutgoing, outgoing{task.Author.ID, result})
+				}
 				result = fmt.Sprintf(`Задача "%s" назначена на вас`, task.Description)
 				task.Executor = userSend
-				task.StatusCode = Assigned
+				task.StatusCode = modules.Assigned
 				allOutgoing = append(allOutgoing, outgoing{userSend.ID, result})
-			case Assigned:
+			case modules.Assigned:
 				resultToExecutor := fmt.Sprintf(`Задача "%s" назначена на @%s`, task.Description, userSend.UserName)
-				allOutgoing = append(allOutgoing, outgoing{task.Executor.ID, resultToExecutor})	
+				allOutgoing = append(allOutgoing, outgoing{task.Executor.ID, resultToExecutor})
 				resultToNewExecutor := fmt.Sprintf(`Задача "%s" назначена на вас`, task.Description)
 				allOutgoing = append(allOutgoing, outgoing{userSend.ID, resultToNewExecutor})
 				task.Executor = userSend
@@ -149,15 +175,19 @@ func applyCmdAssign(ctx context.Context, value string, userSend *tgbotapi.User) 
 	}
 	return allOutgoing
 }
+
 func applyCmdUnassign(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
-		return []outgoing{{userSend.ID, "result"}}
+	return []outgoing{{userSend.ID, "result"}}
 }
+
 func applyCmdResolve(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
-		return []outgoing{{userSend.ID, "result"}}
+	return []outgoing{{userSend.ID, "result"}}
 }
+
 func applyCmdMy(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
-		return []outgoing{{userSend.ID, "result"}}
+	return []outgoing{{userSend.ID, "result"}}
 }
+
 func applyCmdOwner(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
-		return []outgoing{{userSend.ID, "result"}}
+	return []outgoing{{userSend.ID, "result"}}
 }

@@ -176,14 +176,14 @@ formatters: # Форматтеры кода (проверка стиля)
     - gofumpt  # Строгая версия gofmt с дополнительными правилами
     - gci      # Форматтер импортов (гибкая альтернатива goimports)
   settings:
+    # gci:
+    #   sections: # Порядок группировки импортов
+    #     - Standard  # Стандартная библиотека
+    #     - Default   # Сторонние зависимости
+    #     - Prefix(github.com/CoolVery/hm4)  # Локальные импорты проекта
+    #   no-inline-comments: false  # Разрешить комментарии после импортов (true — запретит)
     gofumpt:
       extra:
         group-params: true  # Группировать однотипные параметры функций (бывший extra-rules)
-    gci:
-      sections: # Порядок группировки импортов
-        - Standard  # Стандартная библиотека
-        - Default   # Сторонние зависимости
-        - Prefix(github.com/CoolVery/VKEducathionGO)  # Локальные импорты проекта
-      no-inline-comments: false  # Разрешить комментарии после импортов (true — запретит)
   exclusions: # Не форматируем сгенерированный код (pkg/proto/**, *.pb.go и т.п.)
     generated: strict

@@ -2,24 +2,25 @@ package modules
 
 import tgbotapi "github.com/skinass/telegram-bot-api/v5"
 
-var AllTasks = []Task{}
-var MaxId = 1
-
+var (
+	AllTasks = []Task{}
+	MaxId    = 1
+)
 
 type Task struct {
-	ID 				int
-	Author     	*tgbotapi.User
-	Description 	string
-	Executor		*tgbotapi.User
-	StatusCode		int
+	ID          int
+	Author      *tgbotapi.User
+	Description string
+	Executor    *tgbotapi.User
+	StatusCode  int
 }
 
 func NewTask(idNewTask int, description string, author *tgbotapi.User) Task {
 	newTask := Task{
-		ID: idNewTask,
-		Author: author,
+		ID:          idNewTask,
+		Author:      author,
 		Description: description,
-		StatusCode: NotAssigned,
+		StatusCode:  NotAssigned,
 	}
 	return newTask
 }
