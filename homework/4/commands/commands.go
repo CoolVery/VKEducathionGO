@@ -177,6 +177,41 @@ func applyCmdAssign(ctx context.Context, value string, userSend *tgbotapi.User) 
 }
 
 func applyCmdUnassign(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
+	if value == "" {
+		return []outgoing{{userSend.ID, errs.ErrArgsIsNil.Error()}}
+	}
+
+	select {
+	case <-ctx.Done():
+		return []outgoing{{userSend.ID, errs.ErrArdsIsNotNil.Error()}}
+	default:
+	}
+
+	valueNum, err := strconv.Atoi(value)
+	if err != nil {
+		return []outgoing{{userSend.ID, errs.ErrConvertStringToNum.Error()}}
+	}
+
+	for i := range modules.AllTasks {
+		if modules.AllTasks[i].ID == valueNum {
+			task := &modules.AllTasks[i]
+			if task.StatusCode == modules.NotAssigned {
+				return []outgoing{{userSend.ID, errs.ErrTryUnassignedNotAssignedTask.Error()}}
+			}
+			if task.Executor.ID != userSend.ID {
+				return []outgoing{{userSend.ID, errs.ErrTryUnassignedNotYourTask.Error()}}
+			}
+
+			resultOut := make([]outgoing, 0, 2)
+			msgToSender := "Принято"
+			resultOut = append(resultOut, outgoing{userSend.ID, msgToSender})
+			task.StatusCode = modules.NotAssigned
+			task.Executor = nil
+			msgToAuthor := fmt.Sprintf(`Задача "%s" осталась без исполнителя`, task.Description)
+			resultOut = append(resultOut, outgoing{task.Author.ID, msgToAuthor})
+			return resultOut
+		}
+	}
 	return []outgoing{{userSend.ID, "result"}}
 }
 
