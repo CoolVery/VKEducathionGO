@@ -93,6 +93,10 @@ func applyCmdTasks(ctx context.Context, value string, userSend *tgbotapi.User) [
 	default:
 	}
 
+	if len(modules.AllTasks) == 0 {
+		return []outgoing{{userSend.ID, errs.ErrNotTasks.Error()}}
+	}
+	
 	var printAllTask []string
 	for _, task := range modules.AllTasks {
 		switch task.StatusCode {
@@ -149,7 +153,6 @@ func applyCmdAssign(ctx context.Context, value string, userSend *tgbotapi.User) 
 	if err != nil {
 		return []outgoing{{userSend.ID, errs.ErrConvertStringToNum.Error()}}
 	}
-	var result string
 	var allOutgoing []outgoing
 	for i := range modules.AllTasks {
 		if modules.AllTasks[i].ID == valueNum {
@@ -157,23 +160,26 @@ func applyCmdAssign(ctx context.Context, value string, userSend *tgbotapi.User) 
 			switch task.StatusCode {
 			case modules.NotAssigned:
 				if task.Author.ID != userSend.ID {
-					result = fmt.Sprintf(`Задача "%s" назначена на @%s`, task.Description, userSend.UserName)
-					allOutgoing = append(allOutgoing, outgoing{task.Author.ID, result})
+					msgToAuthor := fmt.Sprintf(`Задача "%s" назначена на @%s`, task.Description, userSend.UserName)
+					allOutgoing = append(allOutgoing, outgoing{task.Author.ID, msgToAuthor})
 				}
-				result = fmt.Sprintf(`Задача "%s" назначена на вас`, task.Description)
+				msgToExecutor := fmt.Sprintf(`Задача "%s" назначена на вас`, task.Description)
 				task.Executor = userSend
 				task.StatusCode = modules.Assigned
-				allOutgoing = append(allOutgoing, outgoing{userSend.ID, result})
+				allOutgoing = append(allOutgoing, outgoing{userSend.ID, msgToExecutor})
+				return allOutgoing
 			case modules.Assigned:
 				resultToExecutor := fmt.Sprintf(`Задача "%s" назначена на @%s`, task.Description, userSend.UserName)
 				allOutgoing = append(allOutgoing, outgoing{task.Executor.ID, resultToExecutor})
 				resultToNewExecutor := fmt.Sprintf(`Задача "%s" назначена на вас`, task.Description)
 				allOutgoing = append(allOutgoing, outgoing{userSend.ID, resultToNewExecutor})
 				task.Executor = userSend
+				return allOutgoing
+
 			}
 		}
 	}
-	return allOutgoing
+	return []outgoing{{userSend.ID, errs.ErrTaskNotFound.Error()}}
 }
 
 func applyCmdUnassign(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
@@ -212,7 +218,7 @@ func applyCmdUnassign(ctx context.Context, value string, userSend *tgbotapi.User
 			return resultOut
 		}
 	}
-	return []outgoing{{userSend.ID, "result"}}
+	return []outgoing{{userSend.ID, errs.ErrTaskNotFound.Error()}}
 }
 
 func applyCmdResolve(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
@@ -238,7 +244,7 @@ func applyCmdResolve(ctx context.Context, value string, userSend *tgbotapi.User)
 				return []outgoing{{userSend.ID,errs.ErrTryResolveNotAssignedTask.Error()}}
 			}
 			if userSend.ID != task.Executor.ID {
-				return []outgoing{{userSend.ID,errs.ErrTruResolveNotYourTask.Error()}}
+				return []outgoing{{userSend.ID,errs.ErrTryResolveNotYourTask.Error()}}
 			}
 			resultOut := make([]outgoing, 0, 2)
 			modules.AllTasks[i] = modules.AllTasks[len(modules.AllTasks) - 1]
@@ -249,13 +255,13 @@ func applyCmdResolve(ctx context.Context, value string, userSend *tgbotapi.User)
 			return resultOut	
 		}	
 	}
-	return []outgoing{{userSend.ID, "result"}}
+	return []outgoing{{userSend.ID, errs.ErrTaskNotFound.Error()}}
 }
 
 func applyCmdMy(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
-	return []outgoing{{userSend.ID, "result"}}
+	return []outgoing{{userSend.ID, errs.ErrTaskNotFound.Error()}}
 }
 
 func applyCmdOwner(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
-	return []outgoing{{userSend.ID, "result"}}
+	return []outgoing{{userSend.ID, errs.ErrTaskNotFound.Error()}}
 }

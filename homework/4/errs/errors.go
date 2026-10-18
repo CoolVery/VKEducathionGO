@@ -19,6 +19,8 @@ var (
 	ErrTryUnassignedNotYourTask     = errors.New("Задача не на вас")
 	ErrTryResolveNotAssignedTask    = errors.New("нельзя исполнить не назначенную задачу")
 	ErrTryResolveNotYourTask        = errors.New("нельзя исполнить не свою задачу")
+	ErrTaskNotFound                 = errors.New("такой задачи нет")
+	ErrNotTasks                     = errors.New("в базе нет никаких задач")
 )
 
 func CreateErrMsg(errClient, errInner error) string {
