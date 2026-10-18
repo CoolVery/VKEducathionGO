@@ -216,6 +216,39 @@ func applyCmdUnassign(ctx context.Context, value string, userSend *tgbotapi.User
 }
 
 func applyCmdResolve(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
+	if value == "" {
+		return []outgoing{{userSend.ID, errs.ErrArgsIsNil.Error()}}
+	}
+
+	select {
+	case <-ctx.Done():
+		return []outgoing{{userSend.ID, errs.ErrArdsIsNotNil.Error()}}
+	default:
+	}
+
+	valueNum, err := strconv.Atoi(value)
+	if err != nil {
+		return []outgoing{{userSend.ID, errs.ErrConvertStringToNum.Error()}}
+	}
+	for i := range modules.AllTasks {
+		if modules.AllTasks[i].ID == valueNum {
+			task := modules.AllTasks[i]
+
+			if task.StatusCode == modules.NotAssigned {
+				return []outgoing{{userSend.ID,errs.ErrTryResolveNotAssignedTask.Error()}}
+			}
+			if userSend.ID != task.Executor.ID {
+				return []outgoing{{userSend.ID,errs.ErrTruResolveNotYourTask.Error()}}
+			}
+			resultOut := make([]outgoing, 0, 2)
+			modules.AllTasks[i] = modules.AllTasks[len(modules.AllTasks) - 1]
+			modules.AllTasks = modules.AllTasks[:len(modules.AllTasks) - 1]
+			msgSendUser := fmt.Sprintf(`Задача "%s" выполнена`, task.Description) 
+			msgSendAuthor := fmt.Sprintf(`Задача "%s" выполнена @%s`, task.Description, task.Executor.UserName) 
+			resultOut = append(resultOut, outgoing{userSend.ID, msgSendUser}, outgoing{task.Author.ID, msgSendAuthor})	
+			return resultOut	
+		}	
+	}
 	return []outgoing{{userSend.ID, "result"}}
 }
 

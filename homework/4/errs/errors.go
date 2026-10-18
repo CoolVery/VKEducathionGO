@@ -17,6 +17,8 @@ var (
 	ErrNotBotSend                   = errors.New("бот не смог отправить сообщение пользователю")
 	ErrTryUnassignedNotAssignedTask = errors.New("Задача еще не назначена")
 	ErrTryUnassignedNotYourTask     = errors.New("Задача не на вас")
+	ErrTryResolveNotAssignedTask    = errors.New("нельзя исполнить не назначенную задачу")
+	ErrTryResolveNotYourTask        = errors.New("нельзя исполнить не свою задачу")
 )
 
 func CreateErrMsg(errClient, errInner error) string {
