@@ -277,7 +277,7 @@ func applyCmdMy(ctx context.Context, value string, userSend *tgbotapi.User) []ou
 	var outStringWithTask []string
 	for i := range modules.AllTasks {
 		task := modules.AllTasks[i]
-		if modules.AllTasks[i].Executor.ID == userSend.ID {
+		if int64(task.StatusCode) != modules.NotAssigned && task.Executor.ID == userSend.ID {
 			msg := fmt.Sprintf(`%d. %s by @%s
 /unassign_%d /resolve_%d`, task.ID, task.Description, task.Author.UserName, task.ID, task.ID)
 			outStringWithTask = append(outStringWithTask, msg)
