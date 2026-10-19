@@ -3,12 +3,14 @@ package commands
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
-	tgbotapi "github.com/skinass/telegram-bot-api/v5"
 	"hm4/errs"
 	"hm4/modules"
+
+	tgbotapi "github.com/skinass/telegram-bot-api/v5"
 )
 
 type outgoing struct {
@@ -259,7 +261,35 @@ func applyCmdResolve(ctx context.Context, value string, userSend *tgbotapi.User)
 }
 
 func applyCmdMy(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
-	return []outgoing{{userSend.ID, errs.ErrTaskNotFound.Error()}}
+	if value != "" {
+		return []outgoing{{userSend.ID, errs.ErrArdsIsNotNil.Error()}}
+	}
+
+	select {
+	case <-ctx.Done():
+		return []outgoing{{userSend.ID, errs.ErrCtxDone.Error()}}
+	default:
+	}
+
+	if len(modules.AllTasks) == 0 {
+		return []outgoing{{userSend.ID, errs.ErrNotTasks.Error()}}
+	}
+
+	var outStringWithTask []string
+	for i := range modules.AllTasks {
+		task := modules.AllTasks[i]
+		if modules.AllTasks[i].Executor.ID == userSend.ID {
+			msg := fmt.Sprintf(`%d. %s by @%s
+/unassign_%d /resolve_%d`, task.ID, task.Description, task.Author.UserName, task.ID, task.ID)
+			outStringWithTask = append(outStringWithTask, msg)
+		}
+	}
+	if len(outStringWithTask) == 0 {
+		return []outgoing{{userSend.ID, errs.ErrTaskNotFound.Error()}}
+	}
+	
+	resultMsg := strings.Join(outStringWithTask,  "\n\n")
+	return []outgoing{outgoing{userSend.ID, resultMsg}}
 }
 
 func applyCmdOwner(ctx context.Context, value string, userSend *tgbotapi.User) []outgoing {
