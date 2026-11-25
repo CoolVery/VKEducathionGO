@@ -14,16 +14,6 @@ import (
 	"hm4/errs"
 )
 
-// var (
-// 	// @BotFather в телеграме даст вам токен. Если захотите потыкать своего бота через телегу - используйте именно его
-// 	BotToken = os.Getenv("BOTTOKEN")
-
-// 	// Урл, в который будет стучаться телега при получении сообщения от пользователя.
-// 	// Может быть как айпишником личной виртуалки, так и просто выдан сервисом для деплоя
-// 	// для serveo туннируем - ssh -R 80:localhost:3000 serveo.net
-// 	WebhookURL = os.Getenv("WEBHOOK")
-// )
-
 func loadEnv() error {
 	if err := godotenv.Load(); err != nil {
 		return fmt.Errorf("%s", errs.CreateErrMsg(errs.ErrLaunchEnv, err))
