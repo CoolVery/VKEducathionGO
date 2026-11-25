@@ -99,7 +99,7 @@ func TestApis(t *testing.T) {
 	PrepareTestApis(db)
 
 	// возможно вам будет удобно закомментировать это, чтобы смотреть результат после теста
-	defer CleanupTestApis(db)
+	// defer CleanupTestApis(db)
 
 	handler, err := NewDBExplorer(db) //nolint:typecheck
 	if err != nil {
